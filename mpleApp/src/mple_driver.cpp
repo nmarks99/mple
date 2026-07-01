@@ -4,7 +4,7 @@
 #include "epicsThread.h"
 
 #include "mple_driver.hpp"
-#include "rpc.hpp"
+#include "services.hpp"
 
 static void poll_thread_C(void* pPvt) {
     MpleDriver* pMpleDriver = (MpleDriver*)pPvt;
@@ -18,14 +18,6 @@ constexpr int ASYN_FLAGS = ASYN_MULTIDEVICE | ASYN_CANBLOCK;
 
 MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0) {
-
-    // lua_state_ = luaCreateState();
-    // int status = luaLoadScript(lua_state_, adapter);
-    // if (status) {
-    // printf("Error compiling script file: %s\n", adapter);
-    // const char* err = lua_tostring(lua_state_, -1);
-    // printf("\t%s\n", err);
-    // }
 
     // Get the IOC prefix
     std::string prefix = std::getenv("PREFIX");
@@ -46,17 +38,17 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     validate_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        rpc::validate::handler(this, adapter, std::move(op), std::move(request_value));
+        service::validate::callback(this, adapter, std::move(op), std::move(request_value));
     });
-    pvxs::ioc::server().addPV(prefix + "Planner:Validate", validate_pv_);
+    pvxs::ioc::server().addPV(prefix + "Validate", validate_pv_);
 
     // Execute
     execute_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        rpc::execute::handler(this, adapter, std::move(op), std::move(request_value));
+        service::execute::callback(this, adapter, std::move(op), std::move(request_value));
     });
-    pvxs::ioc::server().addPV(prefix + "Planner:Execute", execute_pv_);
+    pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
     // Create polling thread
     epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
@@ -66,14 +58,6 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
 void MpleDriver::poll() {
     while (true) {
         lock();
-
-        // if (lua_getglobal(lua_state_, "hello_world") == LUA_TFUNCTION) {
-        // lua_pcall(lua_state_, 0, 0, 0);
-        // } else {
-        // printf("function hello_world does not exist in lua script\n");
-        // }
-        // static int count = 0;
-        // printf("count = %d\n", count++);
 
         callParamCallbacks();
         unlock();

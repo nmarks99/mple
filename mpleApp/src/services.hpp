@@ -5,11 +5,10 @@
 #include "mple_driver.hpp"
 #include "robot_adapter_registry.hpp"
 
-namespace rpc {
+namespace service {
 
 namespace validate {
 
-// request from the RPC client
 struct Request {
     Request(pvxs::Value& value) :
         joint_waypoints(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
@@ -18,6 +17,8 @@ struct Request {
     {
         assert(value["resolution"].valid());
     }
+
+    // TODO: these needs to be 2d arrays
     pvxs::shared_array<const double> joint_waypoints = {};
     pvxs::shared_array<const double> cartesian_waypoints = {};
     double resolution = 0.0;
@@ -50,7 +51,7 @@ struct Response {
     }
 };
 
-inline void handler(MpleDriver* drv, RobotAdapter* adapter,
+inline void callback(MpleDriver* drv, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
@@ -115,7 +116,7 @@ struct Response {
     }
 };
 
-inline void handler(MpleDriver* drv, RobotAdapter* adapter,
+inline void callback(MpleDriver* drv, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
