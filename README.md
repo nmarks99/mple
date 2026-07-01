@@ -1,3 +1,3 @@
-# epicsPathPlanner
+# mple
 
-Name idea: Motion Planning Library for EPICS ("mple" or "maple")
+Motion Planning Library for EPICS

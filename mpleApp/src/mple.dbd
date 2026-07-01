@@ -1,2 +1,2 @@
-registrar(PathPlannerRegister)
+registrar(MpleDriverRegister)
 registrar(LuaRobotAdapterRegister)

@@ -1,15 +1,15 @@
-# ../../bin/${EPICS_HOST_ARCH}/ppTest st.cmd
+# ../../bin/${EPICS_HOST_ARCH}/mpleTest st.cmd
 < envPaths
 
-dbLoadDatabase("../../dbd/iocppTestLinux.dbd")
-iocppTestLinux_registerRecordDeviceDriver(pdbbase)
+dbLoadDatabase("../../dbd/iocmpleTestLinux.dbd")
+iocmpleTestLinux_registerRecordDeviceDriver(pdbbase)
 
 epicsEnvSet("IOCSH_PS1", "$(IOC)>")
-epicsEnvSet("PREFIX", "ppTest:")
+epicsEnvSet("PREFIX", "mpleTest:")
 
 # ExampleRobotAdapterConfig("adapter1")
 LuaRobotAdapterConfig("adapter1", "adapter1.lua")
-PathPlannerConfig("planner1", "adapter1")
+MpleDriverConfig("planner1", "adapter1")
 
 ###############################################################################
 iocInit

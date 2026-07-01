@@ -1,4 +1,4 @@
-/* ppTestMain.c */
+/* mpleTestMain.c */
 /* Author:  Ron Sluiter */
 
 #include <stddef.h>

@@ -1,7 +1,7 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
-DIRS += ppTest
+DIRS += mpleTest
 
 include $(TOP)/configure/RULES_TOP
 

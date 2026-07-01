@@ -2,7 +2,7 @@
 from p4p.client.thread import Context
 from p4p import Value, Type
 ctxt = Context("pva")
-PREFIX = "ppTest:Planner:"
+PREFIX = "mpleTest:Planner:"
 
 ValidateMsg = Value(Type([
     ('joint_waypoints', 'ad'),
@@ -22,12 +22,12 @@ ExecuteMsg = Value(Type([
     'accelerations': [0.12, 0.34],
 })
 
-result = ctxt.rpc(f"ppTest:Planner:Validate", ValidateMsg)
+result = ctxt.rpc(f"mpleTest:Planner:Validate", ValidateMsg)
 print(f"Valid: {result["valid"]}")
 print(f"Description: {result["description"]}")
 
 if result["valid"]:
-    result = ctxt.rpc(f"ppTest:Planner:Execute", ExecuteMsg)
+    result = ctxt.rpc(f"mpleTest:Planner:Execute", ExecuteMsg)
     print(f"Code: {result["error_code"]}")
     print(f"Description: {result["description"]}")
 else:

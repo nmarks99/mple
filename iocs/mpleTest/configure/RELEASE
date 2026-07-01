@@ -3,9 +3,9 @@
 # top directory each time this file is changed.
 ##############################################################################
 
-PATH_PLANNER = $(TOP)/../..
--include $(PATH_PLANNER)/configure/RELEASE
--include $(PATH_PLANNER)/configure/RELEASE.local
+MPLE = $(TOP)/../..
+-include $(MPLE)/configure/RELEASE
+-include $(MPLE)/configure/RELEASE.local
 
 # These lines allow developers to override these RELEASE settings
 # without having to modify this file directly.

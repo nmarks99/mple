@@ -2,7 +2,7 @@
 #include <cassert>
 #include <optional>
 #include <pvxs/sharedpv.h>
-#include "path_planner.hpp"
+#include "mple_driver.hpp"
 #include "robot_adapter_registry.hpp"
 
 namespace rpc {
@@ -50,7 +50,7 @@ struct Response {
     }
 };
 
-inline void handler(PathPlanner* planner, RobotAdapter* adapter,
+inline void handler(MpleDriver* drv, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
@@ -115,7 +115,7 @@ struct Response {
     }
 };
 
-inline void handler(PathPlanner* planner, RobotAdapter* adapter,
+inline void handler(MpleDriver* drv, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;

@@ -3,12 +3,12 @@
 #include "epicsExport.h"
 #include "epicsThread.h"
 
-#include "path_planner.hpp"
+#include "mple_driver.hpp"
 #include "rpc.hpp"
 
 static void poll_thread_C(void* pPvt) {
-    PathPlanner* pPathPlanner = (PathPlanner*)pPvt;
-    pPathPlanner->poll();
+    MpleDriver* pMpleDriver = (MpleDriver*)pPvt;
+    pMpleDriver->poll();
 }
 
 constexpr int MAX_CONTROLLERS = 1;
@@ -16,7 +16,7 @@ constexpr int INTERFACE_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask |
 constexpr int INTERRUPT_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask;
 constexpr int ASYN_FLAGS = ASYN_MULTIDEVICE | ASYN_CANBLOCK;
 
-PathPlanner::PathPlanner(const char* port, const char* adapter_name)
+MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0) {
 
     // lua_state_ = luaCreateState();
@@ -59,11 +59,11 @@ PathPlanner::PathPlanner(const char* port, const char* adapter_name)
     pvxs::ioc::server().addPV(prefix + "Planner:Execute", execute_pv_);
 
     // Create polling thread
-    epicsThreadCreate("PathPlannerPoller", epicsThreadPriorityLow,
+    epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
                       epicsThreadGetStackSize(epicsThreadStackMedium), (EPICSTHREADFUNC)poll_thread_C, this);
 }
 
-void PathPlanner::poll() {
+void MpleDriver::poll() {
     while (true) {
         lock();
 
@@ -81,13 +81,13 @@ void PathPlanner::poll() {
     }
 }
 
-// asynStatus PathPlanner::writeInt32(asynUser* pasynUser, epicsInt32 value) {
+// asynStatus MpleDriver::writeInt32(asynUser* pasynUser, epicsInt32 value) {
 // int function = pasynUser->reason;
 // callParamCallbacks();
 // return comm_ok ? asynSuccess : asynError;
 // }
 
-// asynStatus PathPlanner::writeFloat64(asynUser* pasynUser, epicsFloat64 value) {
+// asynStatus MpleDriver::writeFloat64(asynUser* pasynUser, epicsFloat64 value) {
 // // int function = pasynUser->reason;
 // bool comm_ok = true;
 // callParamCallbacks();
@@ -95,22 +95,20 @@ void PathPlanner::poll() {
 // }
 
 // register function for iocsh
-extern "C" int PathPlannerConfig(const char* port, const char* adapter_name) {
-    PathPlanner* pPathPlanner = new PathPlanner(port, adapter_name);
-    pPathPlanner = NULL;
-    (void)pPathPlanner;
-    return (asynSuccess);
+extern "C" int MpleDriverConfig(const char* port, const char* adapter_name) {
+    new MpleDriver(port, adapter_name);
+    return asynSuccess;
 }
 
-static const iocshArg PathPlannerArg0 = {"Connection asyn port", iocshArgString};
-static const iocshArg PathPlannerArg1 = {"Driver asyn port", iocshArgString};
-static const iocshArg* const PathPlannerArgs[2] = {&PathPlannerArg0, &PathPlannerArg1};
-static const iocshFuncDef PathPlannerFuncDef = {"PathPlannerConfig", 2, PathPlannerArgs};
+static const iocshArg MpleDriverArg0 = {"Connection asyn port", iocshArgString};
+static const iocshArg MpleDriverArg1 = {"Driver asyn port", iocshArgString};
+static const iocshArg* const MpleDriverArgs[2] = {&MpleDriverArg0, &MpleDriverArg1};
+static const iocshFuncDef MpleDriverFuncDef = {"MpleDriverConfig", 2, MpleDriverArgs};
 
-static void PathPlannerCallFunc(const iocshArgBuf* args) { PathPlannerConfig(args[0].sval, args[1].sval); }
+static void MpleDriverCallFunc(const iocshArgBuf* args) { MpleDriverConfig(args[0].sval, args[1].sval); }
 
-void PathPlannerRegister(void) { iocshRegister(&PathPlannerFuncDef, PathPlannerCallFunc); }
+void MpleDriverRegister(void) { iocshRegister(&MpleDriverFuncDef, MpleDriverCallFunc); }
 
 extern "C" {
-epicsExportRegistrar(PathPlannerRegister);
+epicsExportRegistrar(MpleDriverRegister);
 }

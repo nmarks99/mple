@@ -6,9 +6,9 @@
 #include <pvxs/nt.h>
 #include <pvxs/iochooks.h>
 
-class PathPlanner : public asynPortDriver {
+class MpleDriver : public asynPortDriver {
   public:
-    PathPlanner(const char* port, const char* script);
+    MpleDriver(const char* port, const char* script);
     virtual void poll(void);
     // virtual asynStatus writeInt32(asynUser* pasynUser, epicsInt32 value);
     // virtual asynStatus writeFloat64(asynUser* pasynUser, epicsFloat64 value);

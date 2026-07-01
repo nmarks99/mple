@@ -7,8 +7,8 @@ include $(TOP)/configure/CONFIG
 
 # PROD_NAME is used by ADCORE to add libraries
 # DBD_PREFIX is used by ADCORE to add dbd files
-PROD_NAME = ppTest
-DBD_PREFIX = iocppTest
+PROD_NAME = mpleTest
+DBD_PREFIX = iocmpleTest
 PROD_IOC = $(PROD_NAME)
 
 # Note that the order in which .dbd files and libraries are added to a list
@@ -44,9 +44,9 @@ ifdef PVXS
   $(PROD_NAME)_LIBS := pvxsIoc pvxs $($(PROD_NAME)_LIBS)
 endif
 
-ifdef PATH_PLANNER
-  $(DBD_NAME)_DBD += pathPlannerSupport.dbd
-  $(PROD_NAME)_LIBS := pathPlanner $($(PROD_NAME)_LIBS)
+ifdef MPLE
+  $(DBD_NAME)_DBD += mpleSupport.dbd
+  $(PROD_NAME)_LIBS := mple $($(PROD_NAME)_LIBS)
 endif
 
 $(PROD_NAME)_LIBS += $(EPICS_BASE_IOC_LIBS)
