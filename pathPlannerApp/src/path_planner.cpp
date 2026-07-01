@@ -4,6 +4,7 @@
 #include "epicsThread.h"
 
 #include "path_planner.hpp"
+#include "rpc.hpp"
 
 static void poll_thread_C(void* pPvt) {
     PathPlanner* pPathPlanner = (PathPlanner*)pPvt;
@@ -31,31 +32,11 @@ PathPlanner::PathPlanner(const char* port, const char* script_path)
         throw std::runtime_error("PREFIX environment variable not found, no custom PV loaded\n");
     }
 
-    validate_pv_.onRPC([](pvxs::server::SharedPV& pv,
-                          std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& args) {
-            // Response
-            using namespace pvxs::members;
-            pvxs::Value response = pvxs::TypeDef(pvxs::TypeCode::Struct, {
-                Bool("valid"),
-                String("description"),
-            }).create();
+    validate_pv_.onRPC(rpc::validate::handler);
+    pvxs::ioc::server().addPV(prefix + "Planner:Validate", validate_pv_);
 
-            // args holds the request
-            if (args["resolution"].valid()) {
-                response["valid"] = true;
-                response["description"] = "Success";
-                if (auto res = args["resolution"].as<double>()) {
-                    printf("Got Resolution = %lf\n", res);
-                }
-            } else {
-                response["valid"] = false;
-                response["description"] = "Something went wrong";
-            }
-            op->reply(response);
-        }
-    );
-    pvxs::ioc::server().addPV(prefix + "Path:Validate", validate_pv_);
+    execute_pv_.onRPC(rpc::execute::handler);
+    pvxs::ioc::server().addPV(prefix + "Planner:Execute", execute_pv_);
 
     epicsThreadCreate("PathPlannerPoller", epicsThreadPriorityLow,
                       epicsThreadGetStackSize(epicsThreadStackMedium), (EPICSTHREADFUNC)poll_thread_C, this);

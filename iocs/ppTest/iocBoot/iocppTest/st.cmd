@@ -7,6 +7,9 @@ iocppTestLinux_registerRecordDeviceDriver(pdbbase)
 epicsEnvSet("IOCSH_PS1", "$(IOC)>")
 epicsEnvSet("PREFIX", "ppTest:")
 
+
+ExampleRobotAdapterConfig("adapter1")
+
 PathPlannerConfig("asdf", "test.lua")
 
 ###############################################################################

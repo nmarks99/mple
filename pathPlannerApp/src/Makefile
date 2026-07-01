@@ -13,12 +13,15 @@ pathPlannerSupport_DBD += path_planner.dbd
 
 # source files to be compiled and added to the library
 pathPlanner_SRCS += path_planner.cpp
+pathPlanner_SRCS += robot_adapter_registry.cpp
 
 # Libraries needed for pathPlanner
 pathPlanner_LIBS += asyn
 pathPlanner_LIBS += lua
 pathPlanner_LIBS += pvxs
 pathPlanner_LIBS += $(EPICS_BASE_IOC_LIBS)
+INC += robot_adapter.hpp
+INC += robot_adapter_registry.hpp
 
 include $(TOP)/configure/RULES
 #----------------------------------------

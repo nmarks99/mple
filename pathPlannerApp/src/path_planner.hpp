@@ -19,5 +19,4 @@ class PathPlanner : public asynPortDriver {
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
-
 };
