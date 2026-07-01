@@ -16,28 +16,49 @@ constexpr int INTERFACE_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask |
 constexpr int INTERRUPT_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask;
 constexpr int ASYN_FLAGS = ASYN_MULTIDEVICE | ASYN_CANBLOCK;
 
-PathPlanner::PathPlanner(const char* port, const char* script_path)
+PathPlanner::PathPlanner(const char* port, const char* adapter_name)
     : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0) {
 
     // lua_state_ = luaCreateState();
-    // int status = luaLoadScript(lua_state_, script_path);
+    // int status = luaLoadScript(lua_state_, adapter);
     // if (status) {
-    // printf("Error compiling script file: %s\n", script_path);
+    // printf("Error compiling script file: %s\n", adapter);
     // const char* err = lua_tostring(lua_state_, -1);
     // printf("\t%s\n", err);
     // }
 
+    // Get the IOC prefix
     std::string prefix = std::getenv("PREFIX");
     if (!prefix.size()) {
         throw std::runtime_error("PREFIX environment variable not found, no custom PV loaded\n");
     }
 
-    validate_pv_.onRPC(rpc::validate::handler);
+    // Find RobotAdapter by name
+    // This implements the robot specific functions needed by the path planner
+    auto* adapter = find_adapter(adapter_name);
+    if (!adapter) {
+        throw std::runtime_error("Failed to find robot adapter: " + std::string(adapter_name));
+    }
+
+    // Set up PVXS RPC callbacks for our custom PVs
+    //
+    // Validate
+    validate_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        rpc::validate::handler(this, adapter, std::move(op), std::move(request_value));
+    });
     pvxs::ioc::server().addPV(prefix + "Planner:Validate", validate_pv_);
 
-    execute_pv_.onRPC(rpc::execute::handler);
+    // Execute
+    execute_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        rpc::execute::handler(this, adapter, std::move(op), std::move(request_value));
+    });
     pvxs::ioc::server().addPV(prefix + "Planner:Execute", execute_pv_);
 
+    // Create polling thread
     epicsThreadCreate("PathPlannerPoller", epicsThreadPriorityLow,
                       epicsThreadGetStackSize(epicsThreadStackMedium), (EPICSTHREADFUNC)poll_thread_C, this);
 }
@@ -74,8 +95,8 @@ void PathPlanner::poll() {
 // }
 
 // register function for iocsh
-extern "C" int PathPlannerConfig(const char* port, const char* script) {
-    PathPlanner* pPathPlanner = new PathPlanner(port, script);
+extern "C" int PathPlannerConfig(const char* port, const char* adapter_name) {
+    PathPlanner* pPathPlanner = new PathPlanner(port, adapter_name);
     pPathPlanner = NULL;
     (void)pPathPlanner;
     return (asynSuccess);

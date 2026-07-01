@@ -27,9 +27,8 @@ class ExampleRobotAdapter : public RobotAdapter {
         return {0.3, 0.4};
     }
 
-    bool stop() const override {
+    void stop() const override {
         log("Stopping robot");
-        return true;
     }
 
     bool execute_trajectory() const override {

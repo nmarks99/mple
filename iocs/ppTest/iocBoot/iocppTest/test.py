@@ -9,7 +9,7 @@ ValidateMsg = Value(Type([
     ('cartesian_waypoints', 'ad'),
     ('resolution', 'd'),
 ]), {
-    'joint_waypoints': [1.0, 2.0, 3.0],
+    'joint_waypoints': [1.0, 2.0],
     'resolution': 3.1415
 })
 
@@ -17,13 +17,12 @@ ExecuteMsg = Value(Type([
     ('joint_waypoints', 'ad'),
     ('speeds', 'ad'),
     ('accelerations', 'ad')]), {
-    'joint_waypoints': [90.0, 180.0, 45.0],
-    'speeds': [1.0, 1.0, 1.0],
-    'accelerations': [0.12, 0.12, 0.12],
+    'joint_waypoints': [90.0, 180.0],
+    'speeds': [1.0, 1.0],
+    'accelerations': [0.12, 0.34],
 })
 
 result = ctxt.rpc(f"ppTest:Planner:Validate", ValidateMsg)
-
 print(f"Valid: {result["valid"]}")
 print(f"Description: {result["description"]}")
 

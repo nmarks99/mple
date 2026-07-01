@@ -34,6 +34,11 @@ ifdef ASYN
   $(PROD_NAME)_LIBS := asyn $($(PROD_NAME)_LIBS)
 endif
 
+ifdef LUA
+  $(DBD_NAME)_DBD += luaSupport.dbd
+  $(PROD_NAME)_LIBS := lua $($(PROD_NAME)_LIBS)
+endif
+
 ifdef PVXS
   $(DBD_NAME)_DBD += pvxsIoc.dbd
   $(PROD_NAME)_LIBS := pvxsIoc pvxs $($(PROD_NAME)_LIBS)

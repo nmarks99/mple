@@ -2,6 +2,7 @@
 #include <cassert>
 #include <optional>
 #include <pvxs/sharedpv.h>
+#include "path_planner.hpp"
 #include "robot_adapter_registry.hpp"
 
 namespace rpc {
@@ -49,7 +50,7 @@ struct Response {
     }
 };
 
-inline void handler(pvxs::server::SharedPV& pv,
+inline void handler(PathPlanner* planner, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
@@ -64,10 +65,6 @@ inline void handler(pvxs::server::SharedPV& pv,
 
     response.valid = true;
     response.description = "Success";
-    // for (auto& v : request->joint_waypoints) {
-        // printf("%lf,", v);
-    // }
-    // printf("\n");
     printf("joint_waypoints.size() = %ld\n", request->joint_waypoints.size());
     printf("cartesian_waypoints.size() = %ld\n", request->cartesian_waypoints.size());
     printf("Got Resolution = %lf\n", request->resolution);
@@ -118,7 +115,7 @@ struct Response {
     }
 };
 
-inline void handler(pvxs::server::SharedPV& pv,
+inline void handler(PathPlanner* planner, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
@@ -133,14 +130,21 @@ inline void handler(pvxs::server::SharedPV& pv,
 
     response.error_code = 0;
     response.description = "Execution started successfully";
-    // for (auto& v : request->joint_waypoints) {
-        // printf("%lf,", v);
-    // }
-    // printf("\n");
+    printf("adapter->get_num_joints() = %d\n", adapter->get_num_joints());
     printf("joint_waypoints.size() = %ld\n", request->joint_waypoints.size());
-    printf("speeds.size() = %ld\n", request->speeds.size());
-    printf("accelerations.size() = %ld\n", request->accelerations.size());
-    printf("call adapter.execute_trajectory(joint_waypoints, speeds, accelerations)\n");
+    if (request->joint_waypoints.size() != adapter->get_num_joints()) {
+        printf("Requested invalid number of joints\n");
+        response.error_code = -1;
+        response.description = "Invalid number of joints";
+        op->reply(response.to_value());
+        return;
+    }
+
+    bool okay = adapter->execute_trajectory();
+    response.error_code = okay ? 0 : -1;
+    if (okay) {
+        response.description = "Okay";
+    }
     op->reply(response.to_value());
 }
 

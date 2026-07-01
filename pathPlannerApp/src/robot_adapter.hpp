@@ -8,6 +8,6 @@ class RobotAdapter {
     // virtual ? get_joint_limits() const = 0;
     virtual std::vector<double> get_joint_positions() const = 0;
     virtual std::vector<double> get_tcp_pose() const = 0;
-    virtual bool stop() const = 0;
+    virtual void stop() const = 0;
     virtual bool execute_trajectory() const = 0;
 };
