@@ -9,5 +9,7 @@ class RobotAdapter {
     virtual std::vector<double> get_joint_positions() const = 0;
     virtual std::vector<double> get_tcp_pose() const = 0;
     virtual void stop() const = 0;
-    virtual bool execute_trajectory() const = 0;
+    // TODO:
+    // virtual bool is_moving() const = 0;
+    virtual bool execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
 };

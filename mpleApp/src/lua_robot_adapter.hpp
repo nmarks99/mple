@@ -1,8 +1,8 @@
 #pragma once
-#include <vector>
-#include "robot_adapter.hpp"
 #include "robot_adapter.hpp"
 #include "robot_adapter_registry.hpp"
+#include <mutex>
+#include <vector>
 extern "C" {
 #include "lua.h"
 }
@@ -19,8 +19,9 @@ class LuaRobotAdapter : public RobotAdapter {
 
     void stop() const override;
 
-    bool execute_trajectory() const override;
+    bool execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
 
-private:
+  private:
     lua_State* lua_state_;
+    mutable std::mutex mutex_;
 };

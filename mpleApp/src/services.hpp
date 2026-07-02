@@ -4,6 +4,7 @@
 #include <pvxs/sharedpv.h>
 #include "mple_driver.hpp"
 #include "robot_adapter_registry.hpp"
+#include "trajectory.hpp"
 
 namespace service {
 
@@ -78,21 +79,33 @@ namespace execute {
 
 // request from the RPC client
 struct Request {
-    Request(pvxs::Value& value) :
-        joint_waypoints(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
-        speeds(value["speeds"].as<pvxs::shared_array<const double>>()),
-        accelerations(value["accelerations"].as<pvxs::shared_array<const double>>())
+    Request(pvxs::Value& value, int njoints) :
+        num_joints(njoints),
+        joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
+        speed(value["speed"].as<double>()),
+        acceleration(value["acceleration"].as<double>())
     {
-        assert(joint_waypoints.size() > 0);
+        // TODO: this crashes the IOC???
+        assert(joint_waypoints_flat.size() > 0 && "joint_waypoints empty");
+        assert(joint_waypoints_flat.size() % num_joints == 0 && "joint_waypoints does not match number of joints");
+
+        // reshape to 2d vector
+        joint_waypoints.reserve(joint_waypoints_flat.size() / 2);
+        for (size_t i = 0; i < joint_waypoints_flat.size(); i += 2) {
+            joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i, joint_waypoints_flat.begin() + i + 2);
+        }
     }
-    pvxs::shared_array<const double> joint_waypoints = {};
-    pvxs::shared_array<const double> speeds = {};
-    pvxs::shared_array<const double> accelerations = {};
+
+    int num_joints = 0;
+    pvxs::shared_array<const double> joint_waypoints_flat = {};
+    std::vector<std::vector<double>> joint_waypoints = {};
+    double speed = 0.0;
+    double acceleration = 0.0;
 };
 
-inline std::optional<Request> build_request(pvxs::Value& value) {
+inline std::optional<Request> build_request(pvxs::Value& value, RobotAdapter* adapter) {
     try {
-        return Request(value);
+        return Request(value, adapter->get_num_joints());
     } catch (...) {}
     return std::nullopt;
 }
@@ -120,7 +133,7 @@ inline void callback(MpleDriver* drv, RobotAdapter* adapter,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     Response response;
-    auto request = build_request(request_value);
+    auto request = build_request(request_value, adapter);
 
     if (!request) {
         response.error_code = -1;
@@ -129,22 +142,16 @@ inline void callback(MpleDriver* drv, RobotAdapter* adapter,
         return;
     }
 
-    response.error_code = 0;
-    response.description = "Execution started successfully";
-    printf("adapter->get_num_joints() = %d\n", adapter->get_num_joints());
-    printf("joint_waypoints.size() = %ld\n", request->joint_waypoints.size());
-    if (request->joint_waypoints.size() != adapter->get_num_joints()) {
-        printf("Requested invalid number of joints\n");
-        response.error_code = -1;
-        response.description = "Invalid number of joints";
-        op->reply(response.to_value());
-        return;
-    }
+    // TODO: move this to a worker thread, reply immediately
+    bool okay = adapter->execute_trajectory(request->joint_waypoints, request->speed, request->acceleration);
 
-    bool okay = adapter->execute_trajectory();
     response.error_code = okay ? 0 : -1;
     if (okay) {
-        response.description = "Success";
+        response.error_code = 0;
+        response.description = "Execution started";
+    } else {
+        response.error_code = -1;
+        response.description = "Error";
     }
     op->reply(response.to_value());
 }

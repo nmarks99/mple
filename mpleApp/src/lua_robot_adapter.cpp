@@ -47,6 +47,8 @@ LuaRobotAdapter::LuaRobotAdapter(const char* script_path) {
 }
 
 int LuaRobotAdapter::get_num_joints() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     int value = 0;
 
     int result = lua_getglobal(lua_state_, "get_num_joints");
@@ -69,6 +71,7 @@ int LuaRobotAdapter::get_num_joints() const {
 }
 
 std::vector<double> LuaRobotAdapter::get_joint_positions() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     std::vector<double> value = {};
 
     int result = lua_getglobal(lua_state_, "get_joint_positions");
@@ -90,53 +93,56 @@ std::vector<double> LuaRobotAdapter::get_joint_positions() const {
 }
 
 std::vector<double> LuaRobotAdapter::get_tcp_pose() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return {0.0, 0.0};
 }
 
 void LuaRobotAdapter::stop() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return;
 }
 
-bool LuaRobotAdapter::execute_trajectory() const {
+bool LuaRobotAdapter::execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
+    std::lock_guard<std::mutex> lock(mutex_);
 
-    bool value = false;
+    bool retval = false;
 
-    int result = lua_getglobal(lua_state_, "move");
-    if (result == LUA_TFUNCTION) {
-        lua_newtable(lua_state_);
+    for (auto& wp : waypoints) {
+        int result = lua_getglobal(lua_state_, "move");
+        if (result == LUA_TFUNCTION) {
+            // create lua table and fill in with waypoint
+            lua_newtable(lua_state_);
+            for (int i = 0; i < wp.size(); i++) {
+                lua_pushnumber(lua_state_, wp[i]);
+                lua_rawseti(lua_state_, -2, i + 1);
+            }
 
-        // Example array data to populate
-        double cpp_array[] = {M_PI/2, M_PI/4};
-        int array_length = sizeof(cpp_array) / sizeof(cpp_array[0]);
+            // push speed and accelerations parameters
+            lua_pushnumber(lua_state_, speed);
+            lua_pushnumber(lua_state_, accel);
 
-        // Populate the table. Lua arrays are 1-indexed.
-        for (int i = 0; i < array_length; i++) {
-            lua_pushnumber(lua_state_, cpp_array[i]);
-            lua_rawseti(lua_state_, -2, i + 1);
-        }
-
-        lua_pushnumber(lua_state_, M_PI);
-        lua_pushnumber(lua_state_, 6.0);
-
-        lua_pcall(lua_state_, 3, 1, 0);
-        int return_type = lua_type(lua_state_, -1);
-        if (return_type == LUA_TBOOLEAN) {
-            value = lua_toboolean(lua_state_, -1);
+            // call move(wp, speed, accel)
+            lua_pcall(lua_state_, 3, 1, 0);
+            int return_type = lua_type(lua_state_, -1);
+            if (return_type == LUA_TBOOLEAN) {
+                retval = lua_toboolean(lua_state_, -1);
+            } else {
+                lua_pop(lua_state_, 1);
+                throw std::runtime_error("move must return a bool, but doesn't");
+            }
         } else {
             lua_pop(lua_state_, 1);
-            throw std::runtime_error("move must return a bool, but doesn't");
+            throw std::runtime_error("move implementation not found");
         }
-    } else {
+
         lua_pop(lua_state_, 1);
-        throw std::runtime_error("move implementation not found");
+
+        if (!retval) {
+            break;
+        }
     }
 
-    lua_pop(lua_state_, 1);
-    return value;
-
-
-
-    return true;
+    return retval;
 }
 
 
