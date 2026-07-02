@@ -144,7 +144,7 @@ inline void callback(MpleDriver* drv, RobotAdapter* adapter,
     bool okay = adapter->execute_trajectory();
     response.error_code = okay ? 0 : -1;
     if (okay) {
-        response.description = "Okay";
+        response.description = "Success";
     }
     op->reply(response.to_value());
 }

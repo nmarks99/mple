@@ -3,6 +3,7 @@
 #include "epicsExport.h"
 #include "luaEpics.h"
 #include <stdexcept>
+#include <cmath>
 
 std::vector<double> extract_table_to_vector(lua_State* L) {
     if (!lua_istable(L, -1)) {
@@ -89,13 +90,52 @@ std::vector<double> LuaRobotAdapter::get_joint_positions() const {
 }
 
 std::vector<double> LuaRobotAdapter::get_tcp_pose() const {
-    return {};
+    return {0.0, 0.0};
 }
 
 void LuaRobotAdapter::stop() const {
+    return;
 }
 
 bool LuaRobotAdapter::execute_trajectory() const {
+
+    bool value = false;
+
+    int result = lua_getglobal(lua_state_, "move");
+    if (result == LUA_TFUNCTION) {
+        lua_newtable(lua_state_);
+
+        // Example array data to populate
+        double cpp_array[] = {M_PI/2, M_PI/4};
+        int array_length = sizeof(cpp_array) / sizeof(cpp_array[0]);
+
+        // Populate the table. Lua arrays are 1-indexed.
+        for (int i = 0; i < array_length; i++) {
+            lua_pushnumber(lua_state_, cpp_array[i]);
+            lua_rawseti(lua_state_, -2, i + 1);
+        }
+
+        lua_pushnumber(lua_state_, M_PI);
+        lua_pushnumber(lua_state_, 6.0);
+
+        lua_pcall(lua_state_, 3, 1, 0);
+        int return_type = lua_type(lua_state_, -1);
+        if (return_type == LUA_TBOOLEAN) {
+            value = lua_toboolean(lua_state_, -1);
+        } else {
+            lua_pop(lua_state_, 1);
+            throw std::runtime_error("move must return a bool, but doesn't");
+        }
+    } else {
+        lua_pop(lua_state_, 1);
+        throw std::runtime_error("move implementation not found");
+    }
+
+    lua_pop(lua_state_, 1);
+    return value;
+
+
+
     return true;
 }
 

@@ -78,13 +78,33 @@ db.record("luascript", P .. "Y") {
 db.record("ao", P .. "J1Target") {
     EGU = "deg",
     PREC = 4,
-    OUT = P .. "m1.VAL PP"
+    -- OUT = P .. "m1.VAL PP"
 }
 
 db.record("ao", P .. "J2Target") {
     EGU = "deg",
     PREC = 4,
-    OUT = P .. "m2.VAL PP"
+    -- OUT = P .. "m2.VAL PP"
+}
+
+db.record("seq", P .. "Move") {
+    DESC = "Commands joint motion to target",
+    DOL0 = P .. "J1Target.VAL",
+    LNK0 = P .. "m1.VAL PP",
+    DOL1 = P .. "J2Target.VAL",
+    LNK1 = P .. "m2.VAL PP"
+}
+
+db.record("calc", P .. "moving_calc_") {
+    INPA = P .. "m1.DMOV CP",
+    INPB = P .. "m2.DMOV CP",
+    CALC = "!(A && B)",
+}
+
+db.record("bi", P .. "Moving") {
+    INP = P .. "moving_calc_.VAL CP",
+    ZNAM = "Done",
+    ONAM = "Moving"
 }
 
 db.record("dfanout", P .. "Stop") {
