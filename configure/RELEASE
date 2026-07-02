@@ -5,8 +5,10 @@
 
 SUPPORT =
 EPICS_BASE =
+
 ASYN =
 LUA =
+PVXS =
 
 # These lines allow developers to override these RELEASE settings
 # without having to modify this file directly.

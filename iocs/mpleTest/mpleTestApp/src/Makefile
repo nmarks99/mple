@@ -30,7 +30,7 @@ $(DBD_NAME)_DBD += base.dbd
 
 ifdef ASYN
   $(DBD_NAME)_DBD += asyn.dbd
-  $(DBD_NAME)_DBD += drvAsynSerialPort.dbd drvAsynIPPort.dbd drvVxi11.dbd devGpib.dbd
+  # $(DBD_NAME)_DBD += drvAsynSerialPort.dbd drvAsynIPPort.dbd drvVxi11.dbd devGpib.dbd
   $(PROD_NAME)_LIBS := asyn $($(PROD_NAME)_LIBS)
 endif
 
@@ -47,6 +47,13 @@ endif
 ifdef MPLE
   $(DBD_NAME)_DBD += mpleSupport.dbd
   $(PROD_NAME)_LIBS := mple $($(PROD_NAME)_LIBS)
+endif
+
+ifdef MOTOR
+  $(DBD_NAME)_DBD += motorSupport.dbd
+  $(DBD_NAME)_DBD += motorSimSupport.dbd
+  $(PROD_NAME)_LIBS := motor $($(PROD_NAME)_LIBS)
+  $(PROD_NAME)_LIBS := motorSimSupport $($(PROD_NAME)_LIBS)
 endif
 
 $(PROD_NAME)_LIBS += $(EPICS_BASE_IOC_LIBS)
