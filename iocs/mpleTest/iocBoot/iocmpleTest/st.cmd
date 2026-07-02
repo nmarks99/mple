@@ -9,8 +9,8 @@ epicsEnvSet("PREFIX", "mpleTest:")
 epicsEnvSet("LUA_SCRIPT_PATH", ".")
 
 # ExampleRobotAdapterConfig("adapter1")
-LuaRobotAdapterConfig("adapter1", "adapter1.lua")
-MpleDriverConfig("planner1", "adapter1")
+LuaRobotAdapterConfig("rr_robot", "rr_robot_adapter.lua")
+MpleDriverConfig("planner1", "rr_robot")
 
 # # Load simulated motor (Requires motor module)
 # epicsEnvSet("INSTANCE", "motorSim")
