@@ -11,5 +11,5 @@ class RobotAdapter {
     virtual void stop() const = 0;
     // TODO:
     // virtual bool is_moving() const = 0;
-    virtual bool execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
+    virtual bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
 };

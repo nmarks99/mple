@@ -5,6 +5,7 @@
 
 import argparse
 import math
+from collections import deque
 
 import epics
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ def main():
     parser.add_argument("--l1", type=float, default=300.0, help="Link 1 length (mm)")
     parser.add_argument("--l2", type=float, default=250.0, help="Link 2 length (mm)")
     parser.add_argument("--rate", type=int, default=50, help="Update interval (ms)")
+    parser.add_argument("--trail-len", type=int, default=30, help="Number of ticks in trailing line")
     args = parser.parse_args()
 
     pv_j1 = epics.PV(args.prefix + "J1")
@@ -35,15 +37,23 @@ def main():
     ax.set_ylabel("Y (mm)")
     ax.set_title("RR Robot Arm")
 
+    # Storage for trailing path coordinates
+    trail_x = deque(maxlen=args.trail_len)
+    trail_y = deque(maxlen=args.trail_len)
+
+    # Line objects for arm, end-effector dot, and the trailing history line
+    (trail_line,) = ax.plot([], [], ":", color="red", alpha=0.6, lw=1.5)
     (arm_line,) = ax.plot([], [], "o-", color="steelblue", lw=3, markersize=8)
     (tcp_dot,) = ax.plot([], [], "o", color="red", markersize=10)
+
     angle_text = ax.text(
         0.02, 0.98, "", transform=ax.transAxes,
         va="top", fontfamily="monospace", fontsize=9,
     )
 
-    workspace = plt.Circle((0, 0), reach, fill=False, ls="--", color="gray", alpha=0.4)
-    ax.add_patch(workspace)
+    # Draws the robot's workspace boundary (a circle)
+    #  workspace = plt.Circle((0, 0), reach, fill=False, ls="--", color="gray", alpha=0.4)
+    #  ax.add_patch(workspace)
 
     def update(frame):
         j1_deg = pv_j1.get() or 0.0
@@ -56,14 +66,21 @@ def main():
         x2 = x1 + args.l2 * math.cos(j1 + j2)
         y2 = y1 + args.l2 * math.sin(j1 + j2)
 
+        # Append current coordinates to deque histories
+        trail_x.append(x2)
+        trail_y.append(y2)
+
+        # Update data arrays
+        trail_line.set_data(list(trail_x), list(trail_y))
         arm_line.set_data([0, x1, x2], [0, y1, y2])
         tcp_dot.set_data([x2], [y2])
+
         angle_text.set_text(
             f"J1: {j1_deg:8.2f} deg\n"
             f"J2: {j2_deg:8.2f} deg\n"
             f"TCP: ({x2:.1f}, {y2:.1f}) mm"
         )
-        return arm_line, tcp_dot, angle_text
+        return trail_line, arm_line, tcp_dot, angle_text
 
     ani = animation.FuncAnimation(fig, update, interval=args.rate, blit=True)
     plt.tight_layout()

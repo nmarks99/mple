@@ -21,9 +21,10 @@ ExecuteMsg = Value(Type([
     ('acceleration', 'd')
 ]), {
     'joint_waypoints': [
-        pi/3, pi/4,
-        pi/2, pi/4,
-        0.0, 0.0
+        pi/3, pi/3,
+        pi/2, -pi/3,
+        0.0, -pi/3,
+        -pi/8, -pi/2
     ],
     'speed': pi/3,
     'acceleration': pi,

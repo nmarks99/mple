@@ -5,6 +5,7 @@
 #include <pvxs/sharedpv.h>
 #include <pvxs/nt.h>
 #include <pvxs/iochooks.h>
+#include <future>
 
 class MpleDriver : public asynPortDriver {
   public:
@@ -12,6 +13,9 @@ class MpleDriver : public asynPortDriver {
     virtual void poll(void);
     // virtual asynStatus writeInt32(asynUser* pasynUser, epicsInt32 value);
     // virtual asynStatus writeFloat64(asynUser* pasynUser, epicsFloat64 value);
+    int idx_mt_active_;
+    int idx_mt_error_;
+    std::vector<std::future<void>> tasks;
   private:
     asynUser* pasynUserDriver_;
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();

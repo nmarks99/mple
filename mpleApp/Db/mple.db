@@ -1,0 +1,13 @@
+record(longin, "$(P)MT:Error") {
+    field(DTYP, "asynInt32")
+    field(INP, "@asyn($(PORT),$(ADDR=0))MT_ERROR")
+    field(SCAN, "I/O Intr")
+}
+
+record(bi, "$(P)MT:Active") {
+    field(DTYP, "asynInt32")
+    field(INP, "@asyn($(PORT),$(ADDR=0))MT_ACTIVE")
+    field(ZNAM, "Done")
+    field(ONAM, "Active")
+    field(SCAN, "I/O Intr")
+}

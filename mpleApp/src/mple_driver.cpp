@@ -50,6 +50,11 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
+    createParam("MT_ACTIVE", asynParamInt32, &idx_mt_active_);
+    createParam("MT_ERROR", asynParamInt32, &idx_mt_error_);
+    setIntegerParam(idx_mt_active_, 0);
+    setIntegerParam(idx_mt_error_, 0);
+
     // Create polling thread
     epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
                       epicsThreadGetStackSize(epicsThreadStackMedium), (EPICSTHREADFUNC)poll_thread_C, this);

@@ -102,7 +102,7 @@ void LuaRobotAdapter::stop() const {
     return;
 }
 
-bool LuaRobotAdapter::execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
+bool LuaRobotAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     bool retval = false;

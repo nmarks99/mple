@@ -31,7 +31,7 @@ class ExampleRobotAdapter : public RobotAdapter {
         log("Stopping robot");
     }
 
-    bool execute_trajectory(std::vector<std::vector<double>>& wps, double speed, double accel) const override {
+    bool execute_trajectory(const std::vector<std::vector<double>>& wps, double speed, double accel) const override {
         log("Executing trajectory");
         return true;
     }

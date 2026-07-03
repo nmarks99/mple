@@ -19,7 +19,7 @@ class LuaRobotAdapter : public RobotAdapter {
 
     void stop() const override;
 
-    bool execute_trajectory(std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
+    bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
 
   private:
     lua_State* lua_state_;

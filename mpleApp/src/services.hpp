@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <optional>
+#include <future>
 #include <pvxs/sharedpv.h>
 #include "mple_driver.hpp"
 #include "robot_adapter_registry.hpp"
@@ -142,18 +143,22 @@ inline void callback(MpleDriver* drv, RobotAdapter* adapter,
         return;
     }
 
-    // TODO: move this to a worker thread, reply immediately
-    bool okay = adapter->execute_trajectory(request->joint_waypoints, request->speed, request->acceleration);
+    std::thread exec_thread([adapter, req=std::move(request.value()), drv](){
+        drv->lock();
+        drv->setIntegerParam(drv->idx_mt_active_, 1);
+        drv->unlock();
+        adapter->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
+        drv->lock();
+        drv->setIntegerParam(drv->idx_mt_active_, 0);
+        drv->unlock();
+    });
+    exec_thread.detach();
 
-    response.error_code = okay ? 0 : -1;
-    if (okay) {
-        response.error_code = 0;
-        response.description = "Execution started";
-    } else {
-        response.error_code = -1;
-        response.description = "Error";
-    }
+    // Reply right away saying we started the process
+    response.error_code = 0;
+    response.description = "Execution started";
     op->reply(response.to_value());
+    return;
 }
 
 }
