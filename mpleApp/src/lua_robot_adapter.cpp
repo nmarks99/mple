@@ -112,7 +112,7 @@ bool LuaRobotAdapter::execute_trajectory(const std::vector<std::vector<double>>&
         if (result == LUA_TFUNCTION) {
             // create lua table and fill in with waypoint
             lua_newtable(lua_state_);
-            for (int i = 0; i < wp.size(); i++) {
+            for (size_t i = 0; i < wp.size(); i++) {
                 lua_pushnumber(lua_state_, wp[i]);
                 lua_rawseti(lua_state_, -2, i + 1);
             }

@@ -1,0 +1,7 @@
+EPICS_BASE = /usr/local/epics/base-7.0.8.1
+SUPPORT = /home/nick/.local/epics/synApps_6_3/support
+
+ASYN = $(SUPPORT)/asyn-R4-44-2
+LUA = $(SUPPORT)/lua-git
+MOTOR = $(SUPPORT)/motor-R7-3-1
+PVXS = /home/nick/.local/epics/pvxs
