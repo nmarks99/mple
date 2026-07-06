@@ -46,7 +46,7 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     execute_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        service::execute::callback(this, adapter, std::move(op), std::move(request_value));
+        execute_callback(adapter, std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
