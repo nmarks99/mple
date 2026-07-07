@@ -6,17 +6,17 @@
 #include <pvxs/server.h>
 #include <pvxs/sharedpv.h>
 
-#include "robot_adapter_registry.hpp"
+#include "mple_adapter_registry.hpp"
 
 class MpleDriver;
 
 class RPCHandler {
   public:
-    RPCHandler(MpleDriver* driver, RobotAdapter* adapter, const std::string& prefix);
+    RPCHandler(MpleDriver* driver, MpleAdapter* adapter, const std::string& prefix);
 
   private:
     MpleDriver* driver_;
-    RobotAdapter* adapter_;
+    MpleAdapter* adapter_;
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
@@ -39,7 +39,7 @@ class RPCHandler {
             }
         }
 
-        static std::optional<ValidateRequest> build(pvxs::Value& value, RobotAdapter* adapter) {
+        static std::optional<ValidateRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
             try {
                 return ValidateRequest(value, adapter->get_num_joints());
             } catch (...) {
@@ -90,7 +90,7 @@ class RPCHandler {
             }
         }
 
-        static std::optional<ExecuteRequest> build(pvxs::Value& value, RobotAdapter* adapter) {
+        static std::optional<ExecuteRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
             try {
                 return ExecuteRequest(value, adapter->get_num_joints());
             } catch (...) {

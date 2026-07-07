@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "asynPortDriver.h"
-#include "robot_adapter_registry.hpp"
+#include "mple_adapter_registry.hpp"
 
 class RPCHandler;
 

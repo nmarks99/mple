@@ -1,15 +1,15 @@
 #pragma once
-#include "robot_adapter.hpp"
-#include "robot_adapter_registry.hpp"
+#include "mple_adapter.hpp"
+#include "mple_adapter_registry.hpp"
 #include <mutex>
 #include <vector>
 extern "C" {
 #include "lua.h"
 }
 
-class LuaRobotAdapter : public RobotAdapter {
+class LuaMpleAdapter : public MpleAdapter {
   public:
-    LuaRobotAdapter(const char* script_path);
+    LuaMpleAdapter(const char* script_path);
 
     int get_num_joints() const override;
 

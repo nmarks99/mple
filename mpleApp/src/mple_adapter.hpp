@@ -1,9 +1,9 @@
 #pragma once
 #include <vector>
 
-class RobotAdapter {
+class MpleAdapter {
   public:
-    virtual ~RobotAdapter() = default;
+    virtual ~MpleAdapter() = default;
     virtual int get_num_joints() const = 0;
     // virtual ? get_joint_limits() const = 0;
     virtual std::vector<double> get_joint_positions() const = 0;

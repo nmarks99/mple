@@ -1,4 +1,4 @@
-#include "lua_robot_adapter.hpp"
+#include "lua_mple_adapter.hpp"
 #include "iocsh.h"
 #include "epicsExport.h"
 #include "luaEpics.h"
@@ -31,7 +31,7 @@ std::vector<double> extract_table_to_vector(lua_State* L) {
     return result;
 }
 
-LuaRobotAdapter::LuaRobotAdapter(const char* script_path) {
+LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
     lua_state_ = luaCreateState();
     if (!lua_state_) {
         throw std::runtime_error("Error creating lua state");
@@ -46,7 +46,7 @@ LuaRobotAdapter::LuaRobotAdapter(const char* script_path) {
     }
 }
 
-int LuaRobotAdapter::get_num_joints() const {
+int LuaMpleAdapter::get_num_joints() const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     int value = 0;
@@ -70,7 +70,7 @@ int LuaRobotAdapter::get_num_joints() const {
     return value;
 }
 
-std::vector<double> LuaRobotAdapter::get_joint_positions() const {
+std::vector<double> LuaMpleAdapter::get_joint_positions() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<double> value = {};
 
@@ -92,17 +92,17 @@ std::vector<double> LuaRobotAdapter::get_joint_positions() const {
     return value;
 }
 
-std::vector<double> LuaRobotAdapter::get_tcp_pose() const {
+std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return {0.0, 0.0};
 }
 
-void LuaRobotAdapter::stop() const {
+void LuaMpleAdapter::stop() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return;
 }
 
-bool LuaRobotAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
+bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     bool retval = false;
@@ -146,20 +146,20 @@ bool LuaRobotAdapter::execute_trajectory(const std::vector<std::vector<double>>&
 }
 
 
-extern "C" void LuaRobotAdapterConfig(const char* name, const char* script_path) {
-    register_adapter(new LuaRobotAdapter(script_path), name);
+extern "C" void LuaMpleAdapterConfig(const char* name, const char* script_path) {
+    register_adapter(new LuaMpleAdapter(script_path), name);
 }
 
-static const iocshArg LuaRobotAdapterArg0 = {"name", iocshArgString};
-static const iocshArg LuaRobotAdapterArg1 = {"script_path", iocshArgString};
-static const iocshArg* const LuaRobotAdapterArgs[2] = {&LuaRobotAdapterArg0, &LuaRobotAdapterArg1};
-static const iocshFuncDef LuaRobotAdapterFuncDef = {"LuaRobotAdapterConfig", 2, LuaRobotAdapterArgs};
+static const iocshArg LuaMpleAdapterArg0 = {"name", iocshArgString};
+static const iocshArg LuaMpleAdapterArg1 = {"script_path", iocshArgString};
+static const iocshArg* const LuaMpleAdapterArgs[2] = {&LuaMpleAdapterArg0, &LuaMpleAdapterArg1};
+static const iocshFuncDef LuaMpleAdapterFuncDef = {"LuaMpleAdapterConfig", 2, LuaMpleAdapterArgs};
 
-static void LuaRobotAdapterCallFunc(const iocshArgBuf* args) { LuaRobotAdapterConfig(args[0].sval, args[1].sval); }
+static void LuaMpleAdapterCallFunc(const iocshArgBuf* args) { LuaMpleAdapterConfig(args[0].sval, args[1].sval); }
 
-void LuaRobotAdapterRegister(void) { iocshRegister(&LuaRobotAdapterFuncDef, LuaRobotAdapterCallFunc); }
+void LuaMpleAdapterRegister(void) { iocshRegister(&LuaMpleAdapterFuncDef, LuaMpleAdapterCallFunc); }
 
 extern "C" {
-epicsExportRegistrar(LuaRobotAdapterRegister);
+epicsExportRegistrar(LuaMpleAdapterRegister);
 }
 

@@ -1,2 +1,2 @@
 registrar(MpleDriverRegister)
-registrar(LuaRobotAdapterRegister)
+registrar(LuaMpleAdapterRegister)

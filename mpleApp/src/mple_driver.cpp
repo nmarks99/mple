@@ -26,7 +26,7 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
         throw std::runtime_error("PREFIX environment variable not found, no custom PV loaded\n");
     }
 
-    // Find RobotAdapter by name
+    // Find MpleAdapter by name
     // This implements the robot specific functions needed by the path planner
     auto* adapter = find_adapter(adapter_name);
     if (!adapter) {

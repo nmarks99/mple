@@ -2,7 +2,7 @@
 #include "mple_driver.hpp"
 #include "rpc_handler.hpp"
 
-RPCHandler::RPCHandler(MpleDriver* driver, RobotAdapter* adapter, const std::string& prefix) : driver_(driver), adapter_(adapter) {
+RPCHandler::RPCHandler(MpleDriver* driver, MpleAdapter* adapter, const std::string& prefix) : driver_(driver), adapter_(adapter) {
     assert(driver_ != nullptr && "driver must not be null");
     assert(adapter_ != nullptr && "adapter must not be null");
 
