@@ -1,0 +1,135 @@
+#pragma once
+
+#include <optional>
+#include <pvxs/iochooks.h>
+#include <pvxs/nt.h>
+#include <pvxs/server.h>
+#include <pvxs/sharedpv.h>
+
+#include "robot_adapter_registry.hpp"
+
+class MpleDriver;
+
+class RPCHandler {
+  public:
+    RPCHandler(MpleDriver* driver, RobotAdapter* adapter, const std::string& prefix);
+
+  private:
+    MpleDriver* driver_;
+    RobotAdapter* adapter_;
+    pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
+
+    struct ValidateRequest {
+        ValidateRequest(pvxs::Value& value, int njoints)
+            : num_joints(njoints),
+              joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()) {
+
+            // TODO: assert throwing here crashes the IOC???
+            assert(joint_waypoints_flat.size() > 0 && "joint_waypoints empty");
+            assert(joint_waypoints_flat.size() % num_joints == 0 &&
+                   "joint_waypoints does not match number of joints");
+
+            // reshape to 2d vector
+            joint_waypoints.reserve(joint_waypoints_flat.size() / 2);
+            for (size_t i = 0; i < joint_waypoints_flat.size(); i += num_joints) {
+                joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i,
+                                             joint_waypoints_flat.begin() + i + num_joints);
+            }
+        }
+
+        static std::optional<ValidateRequest> build(pvxs::Value& value, RobotAdapter* adapter) {
+            try {
+                return ValidateRequest(value, adapter->get_num_joints());
+            } catch (...) {
+            }
+            return std::nullopt;
+        }
+
+        int num_joints = 0;
+        pvxs::shared_array<const double> joint_waypoints_flat = {};
+        std::vector<std::vector<double>> joint_waypoints = {};
+    };
+
+    struct ValidateResponse {
+        bool valid = false;
+        std::string description = "";
+
+        pvxs::TypeDef response() {
+            return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+                pvxs::members::Bool("valid"),
+                pvxs::members::String("description"),
+            });
+        }
+
+        pvxs::Value to_value() {
+            auto value = response().create();
+            value["valid"] = valid;
+            value["description"] = description;
+            return value;
+        }
+    };
+
+
+    struct ExecuteRequest {
+        ExecuteRequest(pvxs::Value& value, int njoints)
+            : num_joints(njoints),
+              joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
+              speed(value["speed"].as<double>()), acceleration(value["acceleration"].as<double>()) {
+            // TODO: assert throwing here crashes the IOC???
+            assert(joint_waypoints_flat.size() > 0 && "joint_waypoints empty");
+            assert(joint_waypoints_flat.size() % num_joints == 0 &&
+                   "joint_waypoints does not match number of joints");
+
+            // reshape to 2d vector
+            joint_waypoints.reserve(joint_waypoints_flat.size() / 2);
+            for (size_t i = 0; i < joint_waypoints_flat.size(); i += num_joints) {
+                joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i,
+                                             joint_waypoints_flat.begin() + i + num_joints);
+            }
+        }
+
+        static std::optional<ExecuteRequest> build(pvxs::Value& value, RobotAdapter* adapter) {
+            try {
+                return ExecuteRequest(value, adapter->get_num_joints());
+            } catch (...) {
+            }
+            return std::nullopt;
+        }
+
+        int num_joints = 0;
+        pvxs::shared_array<const double> joint_waypoints_flat = {};
+        std::vector<std::vector<double>> joint_waypoints = {};
+        double speed = 0.0;
+        double acceleration = 0.0;
+    };
+
+    struct ExecuteResponse {
+        int error_code = 0;
+        std::string description = "";
+
+        pvxs::TypeDef response() const {
+            return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+                pvxs::members::Int32("error_code"),
+                pvxs::members::String("description"),
+            });
+        }
+
+        pvxs::Value to_value() {
+            auto value = response().create();
+            value["error_code"] = error_code;
+            value["description"] = description;
+            return value;
+        }
+    };
+
+    void validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value);
+
+    void plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value);
+
+    void execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value);
+};

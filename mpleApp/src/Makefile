@@ -23,6 +23,7 @@ mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
 mple_SRCS += mple_driver.cpp
+mple_SRCS += rpc_handler.cpp
 mple_SRCS += lua_robot_adapter.cpp
 mple_SRCS += robot_adapter_registry.cpp
 

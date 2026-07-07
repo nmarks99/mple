@@ -3,8 +3,9 @@
 #include "epicsExport.h"
 #include "epicsThread.h"
 
+#include "rpc_handler.hpp"
 #include "mple_driver.hpp"
-#include "services.hpp"
+// #include "services.hpp"
 
 static void poll_thread_C(void* pPvt) {
     MpleDriver* pMpleDriver = (MpleDriver*)pPvt;
@@ -32,28 +33,12 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
         throw std::runtime_error("Failed to find robot adapter: " + std::string(adapter_name));
     }
 
-    // Set up PVXS RPC callbacks for our custom PVs
-    //
-    // Validate
-    validate_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
-                          std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value) {
-        service::validate::callback(this, adapter, std::move(op), std::move(request_value));
-    });
-    pvxs::ioc::server().addPV(prefix + "Validate", validate_pv_);
-
-    // Execute
-    execute_pv_.onRPC([this, adapter](pvxs::server::SharedPV& pv,
-                          std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value) {
-        execute_callback(adapter, std::move(op), std::move(request_value));
-    });
-    pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
-
+    // Create asyn parameters
     createParam("MT_ACTIVE", asynParamInt32, &idx_mt_active_);
     createParam("MT_ERROR", asynParamInt32, &idx_mt_error_);
-    setIntegerParam(idx_mt_active_, 0);
-    setIntegerParam(idx_mt_error_, 0);
+
+    // RPCHandler sets up PVXS PVs with RPC callbacks
+    rpc_handler_ = std::make_unique<RPCHandler>(this, adapter, prefix);
 
     // Create polling thread
     epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
