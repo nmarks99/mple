@@ -30,7 +30,7 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
     // This implements the robot specific functions needed by the path planner
     auto* adapter = find_adapter(adapter_name);
     if (!adapter) {
-        throw std::runtime_error("Failed to find robot adapter: " + std::string(adapter_name));
+        throw std::runtime_error("Failed to find adapter: " + std::string(adapter_name));
     }
 
     // Create asyn parameters
