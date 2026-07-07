@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
     auto collision = world.check_point(point);
     if (collision) {
-        std::cout << "Hit " << collision.name << std::endl;
+        std::cout << "Hit " << *collision << std::endl;
     } else {
         std::cout << "Miss" << std::endl;
     }

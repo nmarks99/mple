@@ -12,7 +12,7 @@ void CollisionWorld::remove_object(const std::string& name) {
     objects.erase(name);
 }
 
-CollisionInfo CollisionWorld::check_point(const Position& point) const {
+std::optional<std::string> CollisionWorld::check_point(const Position& point) const {
     for (auto& [_, obj] : objects) {
         for (size_t i = 0; i < obj.shapes.size(); i++) {
 
@@ -20,6 +20,7 @@ CollisionInfo CollisionWorld::check_point(const Position& point) const {
             auto& shape = obj.shapes[i];
             auto& pose_os = obj.shape_poses[i];
 
+            // Transformation matrix from the world to the CollisionObject frame
             Eigen::Isometry3d g_wo;
             {
                 auto position = Eigen::Vector3d(pose_wo.position.x,pose_wo.position.y,pose_wo.position.z);
@@ -29,6 +30,8 @@ CollisionInfo CollisionWorld::check_point(const Position& point) const {
                     * Eigen::AngleAxisd(pose_wo.orientation.rx, Eigen::Vector3d::UnitX());
                 g_wo = (Eigen::Translation3d(position) * rotation).matrix();
             }
+
+            // Transformation matrix from CollisionObject frame to this shape's frame
             Eigen::Isometry3d g_os;
             {
                 auto position = Eigen::Vector3d(pose_os.position.x,pose_os.position.y,pose_os.position.z);
@@ -38,6 +41,8 @@ CollisionInfo CollisionWorld::check_point(const Position& point) const {
                     * Eigen::AngleAxisd(pose_os.orientation.rx, Eigen::Vector3d::UnitX());
                 g_os = (Eigen::Translation3d(position) * rotation).matrix();
             }
+
+            // Transformation matrix from the world to this shape's frame
             Eigen::Isometry3d g_ws = g_wo * g_os;
 
             if (auto* box = std::get_if<Box>(&shape)) {
@@ -48,10 +53,12 @@ CollisionInfo CollisionWorld::check_point(const Position& point) const {
                 Eigen::Vector3d half_extents(box->width / 2.0, box->height / 2.0, box->depth / 2.0);
 
                 if ((ps.array().abs() <= half_extents.array()).all()) {
-                    return CollisionInfo{true, obj.name};
+                    // return CollisionInfo{true, obj.name};
+                    return obj.name;
                 }
             }
         }
     }
-    return CollisionInfo{false, ""};
+    // return CollisionInfo{false, ""};
+    return std::nullopt;
 }
