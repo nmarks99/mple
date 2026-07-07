@@ -1,16 +1,16 @@
 #include <vector>
 #include "iocsh.h"
 #include "epicsExport.h"
-#include "robot_adapter.hpp"
-#include "robot_adapter_registry.hpp"
+#include "mple_adapter.hpp"
+#include "mple_adapter_registry.hpp"
 
 void log(const char* msg) {
-    printf("[ExampleRobotAdapter] %s\n", msg);
+    printf("[ExampleMpleAdapter] %s\n", msg);
 }
 
-class ExampleRobotAdapter : public RobotAdapter {
+class ExampleMpleAdapter : public MpleAdapter {
   public:
-    ExampleRobotAdapter() {};
+    ExampleMpleAdapter() {};
 
     int get_num_joints() const override {
         log("Requesting number of joints");
@@ -38,18 +38,18 @@ class ExampleRobotAdapter : public RobotAdapter {
 };
 
 
-extern "C" void ExampleRobotAdapterConfig(const char* name) {
-    register_adapter(new ExampleRobotAdapter(), name);
+extern "C" void ExampleMpleAdapterConfig(const char* name) {
+    register_adapter(new ExampleMpleAdapter(), name);
 }
 
-static const iocshArg ExampleRobotAdapterArg0 = {"name", iocshArgString};
-static const iocshArg* const ExampleRobotAdapterArgs[1] = {&ExampleRobotAdapterArg0};
-static const iocshFuncDef ExampleRobotAdapterFuncDef = {"ExampleRobotAdapterConfig", 1, ExampleRobotAdapterArgs};
+static const iocshArg ExampleMpleAdapterArg0 = {"name", iocshArgString};
+static const iocshArg* const ExampleMpleAdapterArgs[1] = {&ExampleMpleAdapterArg0};
+static const iocshFuncDef ExampleMpleAdapterFuncDef = {"ExampleMpleAdapterConfig", 1, ExampleMpleAdapterArgs};
 
-static void ExampleRobotAdapterCallFunc(const iocshArgBuf* args) { ExampleRobotAdapterConfig(args[0].sval); }
+static void ExampleMpleAdapterCallFunc(const iocshArgBuf* args) { ExampleMpleAdapterConfig(args[0].sval); }
 
-void ExampleRobotAdapterRegister(void) { iocshRegister(&ExampleRobotAdapterFuncDef, ExampleRobotAdapterCallFunc); }
+void ExampleMpleAdapterRegister(void) { iocshRegister(&ExampleMpleAdapterFuncDef, ExampleMpleAdapterCallFunc); }
 
 extern "C" {
-epicsExportRegistrar(ExampleRobotAdapterRegister);
+epicsExportRegistrar(ExampleMpleAdapterRegister);
 }

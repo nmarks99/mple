@@ -11,7 +11,7 @@ epicsEnvSet("PREFIX", "mpleTest:")
 luaLoadFile("rr_robot.lua", "P=$(PREFIX),STATE=LUASTATE0")
 
 # Load the adapter for our robot and create a mple instance
-LuaRobotAdapterConfig("rr_robot", "rr_robot_adapter.lua")
+LuaMpleAdapterConfig("rr_robot", "rr_robot_adapter.lua")
 MpleDriverConfig("planner1", "rr_robot")
 dbLoadRecords("$(MPLE)/db/mple.db", "P=$(PREFIX),PORT=planner1")
 
