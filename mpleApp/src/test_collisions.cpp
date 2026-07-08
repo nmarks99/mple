@@ -37,6 +37,13 @@ int main(int argc, char* argv[]) {
         { Pose { {0, 0, 0}, {0, 0, 0} } }
     });
 
+    world.add_object(CollisionObject {
+        "sphere1",
+        Pose {{-2, 2, 0}, {0, 0, 0}},
+        { Sphere {1} },
+        { Pose { {0, 0, 0}, {0, 0, 0} } }
+    });
+
     auto collision = world.check_point(point);
     if (collision) {
         std::cout << "Hit " << *collision << std::endl;

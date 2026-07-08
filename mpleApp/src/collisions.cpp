@@ -44,21 +44,25 @@ std::optional<std::string> CollisionWorld::check_point(const Position& point) co
 
             // Transformation matrix from the world to this shape's frame
             Eigen::Isometry3d g_ws = g_wo * g_os;
+            Eigen::Vector3d pw(point.x, point.y, point.z);
+            Eigen::Vector3d ps = g_ws.inverse() * pw;
+            printf("[%s]Point in shape frame: (%lf,%lf,%lf)\n", obj.name.c_str(), ps.x(), ps.y(), ps.z());
+            printf("[%s]Point in world frame: (%lf,%lf,%lf)\n", obj.name.c_str(), pw.x(), pw.y(), pw.z());
 
             if (auto* box = std::get_if<Box>(&shape)) {
-                Eigen::Vector3d pw(point.x, point.y, point.z);
-                // printf("Point in world frame: (%lf,%lf,%lf)\n", pw.x(), pw.y(), pw.z());
-                Eigen::Vector3d ps = g_ws.inverse() * pw;
-                // printf("Point in shape frame: (%lf,%lf,%lf)\n", ps.x(), ps.y(), ps.z());
                 Eigen::Vector3d half_extents(box->width / 2.0, box->height / 2.0, box->depth / 2.0);
-
                 if ((ps.array().abs() <= half_extents.array()).all()) {
-                    // return CollisionInfo{true, obj.name};
                     return obj.name;
                 }
+            } else if (auto* sphere = std::get_if<Sphere>(&shape)) {
+                if (ps.squaredNorm() <= (sphere->radius*sphere->radius)) {
+                    return obj.name;
+                }
+            } else if (auto* cylinder = std::get_if<Cylinder>(&shape)) {
+                // TODO:
+                printf("[check_point] cylinder check not implemented yet\n");
             }
         }
     }
-    // return CollisionInfo{false, ""};
     return std::nullopt;
 }
