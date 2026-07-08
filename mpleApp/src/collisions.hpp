@@ -4,22 +4,41 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <cassert>
 
 // All lengths are in meters and angles in radians
 
 // 3D Cartesian coordinates
 struct Position {
+    Position() = default;
+    Position(const std::vector<double>& pos) {
+        assert(pos.size() == 3);
+        x = pos[0];
+        y = pos[1];
+        z = pos[2];
+    }
+    Position(double xi, double yi, double zi) : x(xi), y(yi), z(zi) {}
     double x, y, z;
 };
 
 // Euler angles
 struct Orientation {
+    Orientation() = default;
+    Orientation(const std::vector<double>& ori) {
+        assert(ori.size() == 3);
+        rx = ori[0];
+        ry = ori[1];
+        rz = ori[2];
+    }
+    Orientation(double rxi, double ryi, double rzi) : rx(rxi), ry(ryi), rz(rzi) {}
     double rx, ry, rz;
 };
 
 struct Pose {
-    Position position;
-    Orientation orientation;
+    Pose() = default;
+    Pose(Position pos, Orientation ori) : position(pos), orientation(ori) {}
+    Position position{};
+    Orientation orientation{};
 };
 
 // Shape primitives

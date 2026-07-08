@@ -23,6 +23,7 @@ mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # Eigen
 USR_INCLUDES += -I$(TOP)/deps/eigen
+USR_INCLUDES += -I$(TOP)/deps/json/single_include
 
 # source files to be compiled and added to the library
 mple_SRCS += mple_driver.cpp
@@ -35,6 +36,11 @@ mple_SRCS += mple_adapter_registry.cpp
 TESTPROD += testCollision
 testCollision_SRCS += test_collisions.cpp
 testCollision_SRCS += collisions.cpp
+
+# Testing json
+TESTPROD += testJson
+testJson_SRCS += test_json.cpp
+testJson_SRCS += collisions.cpp
 
 include $(TOP)/configure/RULES
 #----------------------------------------
