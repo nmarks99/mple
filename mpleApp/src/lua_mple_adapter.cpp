@@ -86,7 +86,7 @@ std::vector<double> LuaMpleAdapter::get_joint_positions() const {
         }
     } else {
         lua_pop(lua_state_, 1);
-        throw std::runtime_error("get_num_joints implementation not found");
+        throw std::runtime_error("get_joint_positions implementation not found");
     }
     lua_pop(lua_state_, 1);
     return value;
@@ -143,6 +143,77 @@ bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& 
     }
 
     return retval;
+}
+
+std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>& joint_angles) const {
+    // std::lock_guard<std::mutex> lock(mutex_);
+    mutex_.lock();
+    std::vector<double> value = {};
+
+    int result = lua_getglobal(lua_state_, "fk");
+    if (result == LUA_TFUNCTION) {
+
+        // TODO: check that joint_angles.size() == get_num_joints()
+
+        // create lua table and fill it with joint_angles vector
+        lua_newtable(lua_state_);
+        for (size_t i = 0; i < joint_angles.size(); i++) {
+            lua_pushnumber(lua_state_, joint_angles[i]);
+            lua_rawseti(lua_state_, -2, i + 1);
+        }
+
+        lua_pcall(lua_state_, 1, 1, 0);
+        int return_type = lua_type(lua_state_, -1);
+        if (return_type == LUA_TTABLE) {
+            value = extract_table_to_vector(lua_state_);
+        } else {
+            lua_pop(lua_state_, 1);
+            throw std::runtime_error("fk must return a table of numbers, but doesn't");
+        }
+    } else {
+        lua_pop(lua_state_, 1);
+        // Since the lua adapter doesn't provide it, call the base implementation of forward kinematics
+        // TODO: need to release the lock before calling base class fk since base class
+        // calls get_num_joints which also tried to take the lock. Check that this is correct
+        mutex_.unlock();
+        return MpleAdapter::fk(joint_angles);
+    }
+    lua_pop(lua_state_, 1);
+    mutex_.unlock();
+    return value;
+}
+
+std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>& tcp_pose) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<double> value = {};
+
+    int result = lua_getglobal(lua_state_, "ik");
+    if (result == LUA_TFUNCTION) {
+
+        // TODO: check that tcp_pose.size() == 6
+
+        // create lua table and fill it with joint_angles vector
+        lua_newtable(lua_state_);
+        for (size_t i = 0; i < tcp_pose.size(); i++) {
+            lua_pushnumber(lua_state_, tcp_pose[i]);
+            lua_rawseti(lua_state_, -2, i + 1);
+        }
+
+        lua_pcall(lua_state_, 1, 1, 0);
+        int return_type = lua_type(lua_state_, -1);
+        if (return_type == LUA_TTABLE) {
+            value = extract_table_to_vector(lua_state_);
+        } else {
+            lua_pop(lua_state_, 1);
+            throw std::runtime_error("ik must return a table of numbers, but doesn't");
+        }
+    } else {
+        lua_pop(lua_state_, 1);
+        // Since the lua adapter doesn't provide it, call the base implementation of inverse kinematics
+        return MpleAdapter::ik(tcp_pose);
+    }
+    lua_pop(lua_state_, 1);
+    return value;
 }
 
 

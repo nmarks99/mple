@@ -21,6 +21,10 @@ class LuaMpleAdapter : public MpleAdapter {
 
     bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
 
+    std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
+
+    std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
+
   private:
     lua_State* lua_state_;
     mutable std::mutex mutex_;

@@ -49,6 +49,24 @@ function move(joints, speed, accel)
     return true
 end
 
+-- -- returns TCP pose given joint angles
+-- function fk(joints)
+    -- -- TODO:
+    -- for i, v in ipairs(joints) do
+        -- print(i .. ":" .. v)
+    -- end
+    -- return {11.11, 22.22, 33.33, 1.57, -1.57, 0.785}
+-- end
+--
+-- -- returns joint angles needed to achieve given TCP pose
+-- function ik(tcp_pose)
+    -- -- TODO:
+    -- for i, v in ipairs(tcp_pose) do
+        -- print(i .. ":" .. v)
+    -- end
+    -- return {1.57, 0.785}
+-- end
+
 function stop()
     epics.put(P .. "Stop.PROC", 1)
 end

@@ -64,6 +64,7 @@ void RPCHandler::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     ValidateResponse response;
     auto request = ValidateRequest::build(request_value, adapter_);
 
+    printf("1here\n");
     if (!request) {
         response.valid = false;
         response.description = "Invalid request";
@@ -74,10 +75,16 @@ void RPCHandler::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     std::optional<std::string> hit;
     for (auto& wp : request->joint_waypoints) {
         // TODO
-        // tcp_pose = adapter_->compute_fk(wp);
-        // Position p{tcp_pose[0], tcp_pose[1], tcp_pose[2]};
-        // auto hit = driver_->collision_world.check_point(p);
-        if (hit = "TestObstacle1"; hit) { break; }
+        auto tcp_pose = adapter_->fk(wp);
+        if (!tcp_pose) {
+            // compute FK here
+            printf("adapter does not provide FK. mple must do it.\n");
+            break;
+        } else {
+            Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
+            auto hit = driver_->collision_world.check_point(p);
+            if (hit) { break; }
+        }
     }
 
     if (hit) {
