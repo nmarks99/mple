@@ -4,6 +4,9 @@ TOP=../..
 
 include $(TOP)/configure/CONFIG
 
+# Requires C++17
+USR_CXXFLAGS += -std=c++17
+
 # Define IOC library name
 LIBRARY_IOC += mple
 

@@ -71,10 +71,22 @@ void RPCHandler::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    response.valid = true;
-    response.description = "Success";
-    printf("joint_waypoints.size() = %ld\n", request->joint_waypoints.size());
-    // printf("cartesian_waypoints.size() = %ld\n", request->cartesian_waypoints.size());
-    // printf("Got Resolution = %lf\n", request->resolution);
+    std::optional<std::string> hit;
+    for (auto& wp : request->joint_waypoints) {
+        // TODO
+        // tcp_pose = adapter_->compute_fk(wp);
+        // Position p{tcp_pose[0], tcp_pose[1], tcp_pose[2]};
+        // auto hit = driver_->collision_world.check_point(p);
+        if (hit = "TestObstacle1"; hit) { break; }
+    }
+
+    if (hit) {
+        response.valid = false;
+        response.description = "Collision with " + *hit;
+    } else {
+        response.valid = true;
+        response.description = "No collisions detected";
+    }
+
     op->reply(response.to_value());
 }

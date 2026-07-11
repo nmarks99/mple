@@ -17,8 +17,8 @@ constexpr int INTERFACE_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask |
 constexpr int INTERRUPT_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask;
 constexpr int ASYN_FLAGS = ASYN_MULTIDEVICE | ASYN_CANBLOCK;
 
-MpleDriver::MpleDriver(const char* port, const char* adapter_name)
-    : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0) {
+MpleDriver::MpleDriver(const char* port, const char* adapter_name, const char* obstacles_file)
+    : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0), collision_world(CollisionWorld{}) {
 
     // Get the IOC prefix
     std::string prefix = std::getenv("PREFIX");
@@ -39,6 +39,11 @@ MpleDriver::MpleDriver(const char* port, const char* adapter_name)
 
     // RPCHandler sets up PVXS PVs with RPC callbacks
     rpc_handler_ = std::make_unique<RPCHandler>(this, adapter, prefix);
+
+    if (obstacles_file) {
+        printf("Loading obstacles from json file %s\n", obstacles_file);
+        collision_world.add_from_json(obstacles_file);
+    }
 
     // Create polling thread
     epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
@@ -69,17 +74,18 @@ void MpleDriver::poll() {
 // }
 
 // register function for iocsh
-extern "C" int MpleDriverConfig(const char* port, const char* adapter_name) {
-    new MpleDriver(port, adapter_name);
+extern "C" int MpleDriverConfig(const char* port, const char* adapter_name, const char* obstacles_file) {
+    new MpleDriver(port, adapter_name, obstacles_file);
     return asynSuccess;
 }
 
-static const iocshArg MpleDriverArg0 = {"Connection asyn port", iocshArgString};
-static const iocshArg MpleDriverArg1 = {"Driver asyn port", iocshArgString};
-static const iocshArg* const MpleDriverArgs[2] = {&MpleDriverArg0, &MpleDriverArg1};
-static const iocshFuncDef MpleDriverFuncDef = {"MpleDriverConfig", 2, MpleDriverArgs};
+static const iocshArg MpleDriverArg0 = {"This driver's name", iocshArgString};
+static const iocshArg MpleDriverArg1 = {"Adapter name", iocshArgString};
+static const iocshArg MpleDriverArg2 = {"Obstacles json file", iocshArgString};
+static const iocshArg* const MpleDriverArgs[3] = {&MpleDriverArg0, &MpleDriverArg1, &MpleDriverArg2};
+static const iocshFuncDef MpleDriverFuncDef = {"MpleDriverConfig", 3, MpleDriverArgs};
 
-static void MpleDriverCallFunc(const iocshArgBuf* args) { MpleDriverConfig(args[0].sval, args[1].sval); }
+static void MpleDriverCallFunc(const iocshArgBuf* args) { MpleDriverConfig(args[0].sval, args[1].sval, args[2].sval); }
 
 void MpleDriverRegister(void) { iocshRegister(&MpleDriverFuncDef, MpleDriverCallFunc); }
 

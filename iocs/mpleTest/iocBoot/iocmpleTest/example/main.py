@@ -33,6 +33,7 @@ ExecuteMsg = Value(Type([
 result = ctxt.rpc(f"mpleTest:Validate", ValidateMsg)
 print(f"Valid: {result["valid"]}")
 print(f"Description: {result["description"]}")
+# TODO: only continue if result["valid"]
 
 result = ctxt.rpc(f"mpleTest:Execute", ExecuteMsg)
 print(f"Error Code: {result["error_code"]}")

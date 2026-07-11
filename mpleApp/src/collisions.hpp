@@ -5,6 +5,7 @@
 #include <variant>
 #include <vector>
 #include <cassert>
+#include "obstacles_schema.hpp"
 
 // All lengths are in meters and angles in radians
 
@@ -61,12 +62,18 @@ struct CollisionObject {
     Pose pose;                                               // CollisionObject pose in world frame
     std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
     std::vector<Pose> shape_poses;                           // Pose of each shape in CollisionObject frame
+    static CollisionObject from_quicktype(const std::string& name, quicktype::ObstacleValue ob);
 };
 
 struct CollisionWorld {
+    static CollisionWorld from_json(const std::string& file_path);
+
     // Adds an object to the world. If an object with the same name is already
     // present, it is overwritten.
     void add_object(CollisionObject obj);
+
+    // Adds object to the world specified in a json file
+    void add_from_json(const std::string& file_path);
 
     // Removes an object from the world
     void remove_object(const std::string& name);
