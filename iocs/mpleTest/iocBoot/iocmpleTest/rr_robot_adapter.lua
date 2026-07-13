@@ -3,6 +3,10 @@ local osi = require("osi")
 
 P = "mpleTest:"
 
+-- Link lengths in m
+L1 = 300 / 1000.0
+L2 = 250 / 1000.0
+
 function get_num_joints()
     return 2
 end
@@ -49,23 +53,23 @@ function move(joints, speed, accel)
     return true
 end
 
--- -- returns TCP pose given joint angles
--- function fk(joints)
-    -- -- TODO:
-    -- for i, v in ipairs(joints) do
-        -- print(i .. ":" .. v)
-    -- end
-    -- return {11.11, 22.22, 33.33, 1.57, -1.57, 0.785}
--- end
---
--- -- returns joint angles needed to achieve given TCP pose
--- function ik(tcp_pose)
-    -- -- TODO:
-    -- for i, v in ipairs(tcp_pose) do
-        -- print(i .. ":" .. v)
-    -- end
-    -- return {1.57, 0.785}
--- end
+-- returns TCP pose given joint angles
+function fk(joints)
+    return {
+        L1 * math.cos(joints[1]) + L2*math.cos(joints[1]+joints[2]),
+        L1 * math.sin(joints[1]) + L2*math.sin(joints[1]+joints[2]),
+        0.0
+    }
+end
+
+-- returns joint angles needed to achieve given TCP pose
+function ik(tcp_pose)
+    local x = tcp_pose[1]
+    local y = tcp_pose[2]
+    local th2 = math.acos((x*x + y*y - L1*L1 - L2*L2) / (2*L1*L2))
+    local th1 = math.atan(y/x) + math.atan((L2*math.sin(th2)) / (L1+L2*math.cos(th2)))
+    return {th1, th2}
+end
 
 function stop()
     epics.put(P .. "Stop.PROC", 1)

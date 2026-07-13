@@ -5,32 +5,6 @@
 #include <stdexcept>
 #include <cmath>
 
-std::vector<double> extract_table_to_vector(lua_State* L) {
-    if (!lua_istable(L, -1)) {
-        throw std::runtime_error("Top of stack is not a table.");
-    }
-
-    size_t array_len = lua_rawlen(L, -1);
-    std::vector<double> result;
-    result.reserve(array_len);
-
-    for (size_t i = 1; i <= array_len; ++i) {
-        // Pushes table[i] to index -1; table moves to index -2
-        lua_rawgeti(L, -1, i);
-
-        if (lua_isnumber(L, -1)) {
-            result.push_back(lua_tonumber(L, -1));
-        } else {
-            lua_pop(L, 1); // Clean up the invalid element
-            throw std::runtime_error("Non-numeric value at index " + std::to_string(i));
-        }
-
-        lua_pop(L, 1); // Pop the element
-    }
-
-    return result;
-}
-
 LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
     lua_state_ = luaCreateState();
     if (!lua_state_) {
@@ -47,27 +21,33 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
 
 int LuaMpleAdapter::get_num_joints() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    int value = 0;
-
-    int result = lua_getglobal(lua_state_, "get_num_joints");
-    if (result == LUA_TFUNCTION) {
-        lua_pcall(lua_state_, 0, 1, 0);
-        int return_type = lua_type(lua_state_, -1);
-        if (return_type == LUA_TNUMBER) {
-            value = lua_tonumber(lua_state_, -1);
-        } else {
-            lua_pop(lua_state_, 1);
-            throw std::runtime_error("get_num_joints must return an integer, but doesn't");
-        }
-    } else {
-        lua_pop(lua_state_, 1);
-        throw std::runtime_error("get_num_joints implementation not found");
-    }
-
-    lua_pop(lua_state_, 1);
-    return value;
+    auto value = call_lua_method<int>("get_num_joints");
+    return value.value_or(0);
 }
+
+// int LuaMpleAdapter::get_num_joints() const {
+    // std::lock_guard<std::recursive_mutex> lock(mutex_);
+//
+    // int value = 0;
+//
+    // int result = lua_getglobal(lua_state_, "get_num_joints");
+    // if (result == LUA_TFUNCTION) {
+        // lua_pcall(lua_state_, 0, 1, 0);
+        // int return_type = lua_type(lua_state_, -1);
+        // if (return_type == LUA_TNUMBER) {
+            // value = lua_tonumber(lua_state_, -1);
+        // } else {
+            // lua_pop(lua_state_, 1);
+            // throw std::runtime_error("get_num_joints must return an integer, but doesn't");
+        // }
+    // } else {
+        // lua_pop(lua_state_, 1);
+        // throw std::runtime_error("get_num_joints implementation not found");
+    // }
+//
+    // lua_pop(lua_state_, 1);
+    // return value;
+// }
 
 std::vector<double> LuaMpleAdapter::get_joint_positions() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -164,6 +144,10 @@ std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>&
         int return_type = lua_type(lua_state_, -1);
         if (return_type == LUA_TTABLE) {
             value = extract_table_to_vector(lua_state_);
+            if (value.size() != 3) {
+                lua_pop(lua_state_, 1);
+                throw std::runtime_error("Returned array from fk must be length 3 (x,y,z) but is only length " + std::to_string(value.size()));
+            }
         } else {
             lua_pop(lua_state_, 1);
             throw std::runtime_error("fk must return a table of numbers, but doesn't");
