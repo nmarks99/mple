@@ -27,5 +27,5 @@ class LuaMpleAdapter : public MpleAdapter {
 
   private:
     lua_State* lua_state_;
-    mutable std::mutex mutex_;
+    mutable std::recursive_mutex mutex_;
 };

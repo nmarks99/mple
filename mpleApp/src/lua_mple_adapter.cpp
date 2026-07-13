@@ -39,15 +39,14 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
 
     int err = luaLoadScript(lua_state_, script_path);
     if (err) {
-        throw std::runtime_error("Error compiling script file: " + std::string(script_path));
         const char* err = lua_tostring(lua_state_, -1);
         printf("\t%s\n", err);
-        return;
+        throw std::runtime_error("Error compiling script file: " + std::string(script_path));
     }
 }
 
 int LuaMpleAdapter::get_num_joints() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     int value = 0;
 
@@ -71,7 +70,7 @@ int LuaMpleAdapter::get_num_joints() const {
 }
 
 std::vector<double> LuaMpleAdapter::get_joint_positions() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<double> value = {};
 
     int result = lua_getglobal(lua_state_, "get_joint_positions");
@@ -93,17 +92,17 @@ std::vector<double> LuaMpleAdapter::get_joint_positions() const {
 }
 
 std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return {0.0, 0.0};
 }
 
 void LuaMpleAdapter::stop() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return;
 }
 
 bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     bool retval = false;
 
@@ -146,8 +145,7 @@ bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& 
 }
 
 std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>& joint_angles) const {
-    // std::lock_guard<std::mutex> lock(mutex_);
-    mutex_.lock();
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<double> value = {};
 
     int result = lua_getglobal(lua_state_, "fk");
@@ -173,18 +171,14 @@ std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>&
     } else {
         lua_pop(lua_state_, 1);
         // Since the lua adapter doesn't provide it, call the base implementation of forward kinematics
-        // TODO: need to release the lock before calling base class fk since base class
-        // calls get_num_joints which also tried to take the lock. Check that this is correct
-        mutex_.unlock();
         return MpleAdapter::fk(joint_angles);
     }
     lua_pop(lua_state_, 1);
-    mutex_.unlock();
     return value;
 }
 
 std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>& tcp_pose) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<double> value = {};
 
     int result = lua_getglobal(lua_state_, "ik");
