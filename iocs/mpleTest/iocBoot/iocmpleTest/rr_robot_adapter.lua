@@ -33,15 +33,14 @@ end
 function move(joints, speed, accel)
     -- Commands a joint move and blocks until complete or error
     print("Starting move...")
-    print("J1Target = "..math.deg(joints[1]))
-    print("J2Target = "..math.deg(joints[2]))
-    print("Speed = "..math.deg(speed))
-    print("Accel = "..math.deg(accel))
+    -- print("J1Target = "..math.deg(joints[1]))
+    -- print("J2Target = "..math.deg(joints[2]))
+    -- print("Speed = "..math.deg(speed))
+    -- print("Accel = "..math.deg(accel))
     epics.put(P.. "J1Target.VAL", math.deg(joints[1]))
     epics.put(P.. "J2Target.VAL", math.deg(joints[2]))
     epics.put(P .. "Move.PROC", 1)
 
-    -- TODO: don't block, let C++ check is_moving
     osi.sleep(0.1) -- HACK: wait for motion to start
     while true do
         if (epics.get(P .. "Moving") == 0) then

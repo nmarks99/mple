@@ -73,22 +73,12 @@ void RPCHandler::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
     std::optional<std::string> hit;
     for (auto& wp : request->joint_waypoints) {
-        std::cout << "calling fk on wp: \n";
-        for (auto& w : wp) {
-            std::cout << w << " ";
-        }
-        std::cout << "\n";
         auto tcp_pose = adapter_->fk(wp);
         if (!tcp_pose) {
-            // compute FK here
-            printf("adapter does not provide FK. mple must do it.\n");
+            printf("Adapter does not provide FK. mple must do it.\n");
+            // Compute FK here. Probably need URDF or DH params
             break;
         } else {
-            std::cout << "Pose: ";
-            for (auto& p : *tcp_pose) {
-                std::cout << p << " ";
-            }
-            std::cout << "\n";
             Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
             auto hit = driver_->collision_world.check_point(p);
             if (hit) { break; }

@@ -25,50 +25,10 @@ int LuaMpleAdapter::get_num_joints() const {
     return value.value_or(0);
 }
 
-// int LuaMpleAdapter::get_num_joints() const {
-    // std::lock_guard<std::recursive_mutex> lock(mutex_);
-//
-    // int value = 0;
-//
-    // int result = lua_getglobal(lua_state_, "get_num_joints");
-    // if (result == LUA_TFUNCTION) {
-        // lua_pcall(lua_state_, 0, 1, 0);
-        // int return_type = lua_type(lua_state_, -1);
-        // if (return_type == LUA_TNUMBER) {
-            // value = lua_tonumber(lua_state_, -1);
-        // } else {
-            // lua_pop(lua_state_, 1);
-            // throw std::runtime_error("get_num_joints must return an integer, but doesn't");
-        // }
-    // } else {
-        // lua_pop(lua_state_, 1);
-        // throw std::runtime_error("get_num_joints implementation not found");
-    // }
-//
-    // lua_pop(lua_state_, 1);
-    // return value;
-// }
-
 std::vector<double> LuaMpleAdapter::get_joint_positions() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    std::vector<double> value = {};
-
-    int result = lua_getglobal(lua_state_, "get_joint_positions");
-    if (result == LUA_TFUNCTION) {
-        lua_pcall(lua_state_, 0, 1, 0);
-        int return_type = lua_type(lua_state_, -1);
-        if (return_type == LUA_TTABLE) {
-            value = extract_table_to_vector(lua_state_);
-        } else {
-            lua_pop(lua_state_, 1);
-            throw std::runtime_error("get_joint_positions must return a table of numbers, but doesn't");
-        }
-    } else {
-        lua_pop(lua_state_, 1);
-        throw std::runtime_error("get_joint_positions implementation not found");
-    }
-    lua_pop(lua_state_, 1);
-    return value;
+    auto value = call_lua_method<std::vector<double>>("get_joint_positions");
+    return value.value_or(std::vector<double>{0.0});
 }
 
 std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
@@ -81,119 +41,51 @@ void LuaMpleAdapter::stop() const {
     return;
 }
 
+
 bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    bool retval = false;
-
+    bool ok = true;
     for (auto& wp : waypoints) {
-        int result = lua_getglobal(lua_state_, "move");
-        if (result == LUA_TFUNCTION) {
-            // create lua table and fill in with waypoint
-            lua_newtable(lua_state_);
-            for (size_t i = 0; i < wp.size(); i++) {
-                lua_pushnumber(lua_state_, wp[i]);
-                lua_rawseti(lua_state_, -2, i + 1);
-            }
-
-            // push speed and accelerations parameters
-            lua_pushnumber(lua_state_, speed);
-            lua_pushnumber(lua_state_, accel);
-
-            // call move(wp, speed, accel)
-            lua_pcall(lua_state_, 3, 1, 0);
-            int return_type = lua_type(lua_state_, -1);
-            if (return_type == LUA_TBOOLEAN) {
-                retval = lua_toboolean(lua_state_, -1);
-            } else {
-                lua_pop(lua_state_, 1);
-                throw std::runtime_error("move must return a bool, but doesn't");
-            }
-        } else {
-            lua_pop(lua_state_, 1);
-            throw std::runtime_error("move implementation not found");
+        auto ret = call_lua_method<bool>("move", wp, speed, accel);
+        if (!ret) {
+            throw std::runtime_error("Error calling lua move method");
         }
-
-        lua_pop(lua_state_, 1);
-
-        if (!retval) {
+        ok = ret.value();
+        if (!ok) {
             break;
         }
     }
-
-    return retval;
+    return ok;
 }
 
 std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>& joint_angles) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    std::vector<double> value = {};
 
-    int result = lua_getglobal(lua_state_, "fk");
-    if (result == LUA_TFUNCTION) {
-
-        // TODO: check that joint_angles.size() == get_num_joints()
-
-        // create lua table and fill it with joint_angles vector
-        lua_newtable(lua_state_);
-        for (size_t i = 0; i < joint_angles.size(); i++) {
-            lua_pushnumber(lua_state_, joint_angles[i]);
-            lua_rawseti(lua_state_, -2, i + 1);
-        }
-
-        lua_pcall(lua_state_, 1, 1, 0);
-        int return_type = lua_type(lua_state_, -1);
-        if (return_type == LUA_TTABLE) {
-            value = extract_table_to_vector(lua_state_);
-            if (value.size() != 3) {
-                lua_pop(lua_state_, 1);
-                throw std::runtime_error("Returned array from fk must be length 3 (x,y,z) but is only length " + std::to_string(value.size()));
-            }
-        } else {
-            lua_pop(lua_state_, 1);
-            throw std::runtime_error("fk must return a table of numbers, but doesn't");
+    auto value = call_lua_method<std::vector<double>>("fk", joint_angles);
+    if (value) {
+        if (value->size() != 3)  {
+            throw std::runtime_error(
+                "Returned array from fk must be length 3 (x,y,z) but is only length " + std::to_string(value->size()));
         }
     } else {
-        lua_pop(lua_state_, 1);
-        // Since the lua adapter doesn't provide it, call the base implementation of forward kinematics
         return MpleAdapter::fk(joint_angles);
     }
-    lua_pop(lua_state_, 1);
     return value;
 }
 
 std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>& tcp_pose) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    std::vector<double> value = {};
 
-    int result = lua_getglobal(lua_state_, "ik");
-    if (result == LUA_TFUNCTION) {
-
-        // TODO: check that tcp_pose.size() == 6
-
-        // create lua table and fill it with joint_angles vector
-        lua_newtable(lua_state_);
-        for (size_t i = 0; i < tcp_pose.size(); i++) {
-            lua_pushnumber(lua_state_, tcp_pose[i]);
-            lua_rawseti(lua_state_, -2, i + 1);
-        }
-
-        lua_pcall(lua_state_, 1, 1, 0);
-        int return_type = lua_type(lua_state_, -1);
-        if (return_type == LUA_TTABLE) {
-            value = extract_table_to_vector(lua_state_);
-        } else {
-            lua_pop(lua_state_, 1);
-            throw std::runtime_error("ik must return a table of numbers, but doesn't");
+    auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
+    if (value) {
+        if (value->size() != get_num_joints())  {
+            throw std::runtime_error("Returned array from ik must be equal to the number of joints");
         }
     } else {
-        lua_pop(lua_state_, 1);
-        // Since the lua adapter doesn't provide it, call the base implementation of inverse kinematics
         return MpleAdapter::ik(tcp_pose);
     }
-    lua_pop(lua_state_, 1);
     return value;
 }
-
 
 extern "C" void LuaMpleAdapterConfig(const char* name, const char* script_path) {
     register_adapter(new LuaMpleAdapter(script_path), name);

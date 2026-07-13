@@ -57,7 +57,7 @@ class LuaMpleAdapter : public MpleAdapter {
 
 
     template <typename T>
-    void lua_push_args (T val) {
+    void lua_push_args (T val) const {
         if constexpr (std::is_arithmetic_v<T>) {
             lua_pushnumber(lua_state_, val);
         } else if constexpr (std::is_same_v<T, std::vector<double>>) {
@@ -85,7 +85,22 @@ class LuaMpleAdapter : public MpleAdapter {
         // Number of function arguments in the parameter pack
         constexpr std::size_t num_args = sizeof...(args);
 
-        if constexpr (std::is_arithmetic_v<T>) {
+        if constexpr (std::is_same_v<T, bool>) {
+            (lua_push_args(args), ...);
+
+            lua_pcall(lua_state_, num_args, 1, 0);
+            int return_type = lua_type(lua_state_, -1);
+            if (return_type == LUA_TBOOLEAN) {
+                value = lua_toboolean(lua_state_, -1);
+            } else {
+                lua_pop(lua_state_, 1);
+                std::cout << std::string(fn_name) + " must return a bool, but doesn't\n";
+                return std::nullopt;
+                // throw std::runtime_error("move must return a bool, but doesn't");
+            }
+        }
+
+        else if constexpr (std::is_arithmetic_v<T>) {
             (lua_push_args(args), ...);
 
             // Call the function
@@ -100,21 +115,6 @@ class LuaMpleAdapter : public MpleAdapter {
                 std::cerr << std::string(fn_name) + " must return an integer, but doesn't\n";
                 return std::nullopt;
                 // throw std::runtime_error(std::string(fn_name) + " must return an integer, but doesn't");
-            }
-        }
-
-        else if constexpr (std::is_same_v<T, bool>) {
-            (lua_push_args(args), ...);
-
-            lua_pcall(lua_state_, num_args, 1, 0);
-            int return_type = lua_type(lua_state_, -1);
-            if (return_type == LUA_TBOOLEAN) {
-                value = lua_toboolean(lua_state_, -1);
-            } else {
-                lua_pop(lua_state_, 1);
-                std::cout << std::string(fn_name) + " must return a bool, but doesn't\n";
-                return std::nullopt;
-                // throw std::runtime_error("move must return a bool, but doesn't");
             }
         }
 
