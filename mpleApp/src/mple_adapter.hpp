@@ -1,34 +1,57 @@
 #pragma once
 #include <vector>
 #include <optional>
-#include <iostream>
 
+/// \brief Abstract base class for implementing a robot specific adapter for mple
 class MpleAdapter {
   public:
     virtual ~MpleAdapter() = default;
-    virtual int get_num_joints() const = 0;
-    // virtual ? get_joint_limits() const = 0;
-    virtual std::vector<double> get_joint_positions() const = 0;
-    virtual std::vector<double> get_tcp_pose() const = 0;
-    virtual void stop() const = 0;
+
     // TODO:
     // virtual bool is_moving() const = 0;
+
+    // TODO:
+    // virtual ? get_joint_limits() const = 0;
+
+    /// \brief Gets the number of joints in the system
+    virtual int get_num_joints() const = 0;
+
+    /// \brief Gets the current joint positions
+    /// \return vector of joint positions
+    virtual std::vector<double> get_joint_positions() const = 0;
+
+    /// \brief Gets the current pose of the tool center point (TCP) in 3D space
+    /// \return vector of the current pose (x,y,z,rx,ry,rz)
+    virtual std::vector<double> get_tcp_pose() const = 0;
+
+    /// \brief Stops all active motion of the system
+    virtual void stop() const = 0;
+
+    /// \brief Moves the system through the provided joint positions.
+    /// \param speed The joints speeds for all moves in the trajectory.
+    /// \param accel The joint accelerations for all moves in the trajectory.
     virtual bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
 
-    // TODO: if derived classes do not override fk and ik,
-    // we should implement it here from provided DH parameters
-    // or URDF
+    /// \brief Computes forward kinematics for the system
+    ///
+    /// Computes the TCP pose resulting from the given joint angles.
+    /// \todo TODO: This method must compute FK itself. Base classes can optionally override this,
+    /// however if they do not and choose to call it here, this method must know how to compute
+    /// FK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const {
-        // TODO: compute FK, return TCP pose
-        // TODO: double lock!
         if (joint_angles.size() != static_cast<size_t>(get_num_joints())) {
             return std::nullopt;
         }
         return std::nullopt;
     };
+
+    /// \brief Computes inverse kinematics for the system
+    ///
+    /// Computes the joint angles required to achieve the requested TCP pose.
+    /// \todo TODO: This method must compute IK itself. Base classes can optionally override this,
+    /// however if they do not and choose to call it directly, this method must know how to compute
+    /// IK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const {
-        // TODO: compute IK, return joint angles
-        // TODO: double lock!
         if (tcp_pose.size() != static_cast<size_t>(6)) {
             return std::nullopt;
         }
