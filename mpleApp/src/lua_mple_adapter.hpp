@@ -3,26 +3,22 @@
 #include "mple_adapter_registry.hpp"
 #include <mutex>
 #include <vector>
+#include <iostream>
+#include <stdexcept>
 extern "C" {
 #include "lua.h"
 }
 
+/// \brief MpleAdapter whose methods are implemented in a user provided lua script
 class LuaMpleAdapter : public MpleAdapter {
   public:
     LuaMpleAdapter(const char* script_path);
-
     int get_num_joints() const override;
-
     std::vector<double> get_joint_positions() const override;
-
     std::vector<double> get_tcp_pose() const override;
-
     void stop() const override;
-
     bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
-
     std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
-
     std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
 
   private:
@@ -54,7 +50,6 @@ class LuaMpleAdapter : public MpleAdapter {
 
         return result;
     }
-
 
     template <typename T>
     void lua_push_args (T val) const {

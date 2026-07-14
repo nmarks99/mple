@@ -1,6 +1,7 @@
-#include "mple_adapter_registry.hpp"
 #include <unordered_map>
+#include "mple_adapter_registry.hpp"
 
+/// \brief Global map to store MpleAdapter*'s keyed by string name
 static std::unordered_map<std::string, MpleAdapter*> g_adapter_registry;
 
 void register_adapter(MpleAdapter* adapter, const std::string& name) {
