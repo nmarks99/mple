@@ -6,7 +6,6 @@ from math import pi
 ctxt = Context("pva")
 PREFIX = "mpleTest:"
 
-
 def validate(joint_waypoints) -> bool:
     ValidateMsg = Value(Type([
         ('joint_waypoints', 'ad'),
@@ -45,7 +44,7 @@ def validate_and_execute(joint_waypoints):
 
 
 wps = [
-    0.0, 0.0,
+    #  0.0, 0.0,
     pi/2, pi/2,
     pi/6, pi/2,
     -pi/3, -pi/3

@@ -24,24 +24,59 @@ class RPCHandler {
     struct ValidateRequest {
         ValidateRequest(pvxs::Value& value, int njoints)
             : num_joints(njoints),
-              joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()) {
+              joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
+              cartesian_waypoints_flat(value["cartesian_waypoints"].as<pvxs::shared_array<const double>>()) {
 
-            // TODO: assert throwing here crashes the IOC???
-            assert(joint_waypoints_flat.size() > 0 && "joint_waypoints empty");
-            assert(joint_waypoints_flat.size() % num_joints == 0 &&
-                   "joint_waypoints does not match number of joints");
-
-            // reshape to 2d vector
-            joint_waypoints.reserve(joint_waypoints_flat.size() / 2);
-            for (size_t i = 0; i < joint_waypoints_flat.size(); i += num_joints) {
-                joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i,
-                                             joint_waypoints_flat.begin() + i + num_joints);
+            if (joint_waypoints_flat.empty() && cartesian_waypoints_flat.empty()) {
+                printf("One of 'joint_waypoints' or 'cartesian_waypoints' must be provided\n");
+                request_valid_ = false;
+                return;
             }
+
+            if (!joint_waypoints_flat.empty() && !cartesian_waypoints_flat.empty()) {
+                printf("Only one of 'joint_waypoints' or 'cartesian_waypoints' must be provided\n");
+                request_valid_ = false;
+                return;
+            }
+
+            if (!joint_waypoints_flat.empty()) {
+                if (joint_waypoints_flat.size() % num_joints != 0) {
+                    printf("joint_waypoints shape does not match number of joints\n");
+                    request_valid_ = false;
+                    return;
+                }
+                // reshape to 2d vector
+                joint_waypoints.reserve(joint_waypoints_flat.size() / num_joints);
+                for (size_t i = 0; i < joint_waypoints_flat.size(); i += num_joints) {
+                    joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i,
+                                                 joint_waypoints_flat.begin() + i + num_joints);
+                }
+            }
+
+            else if (!cartesian_waypoints_flat.empty()) {
+                if (cartesian_waypoints_flat.size() % 6 != 0) {
+                    printf("cartesian_waypoints is not reshapeble to vectors of length 6 (x,y,z,rx,ry,rz)\n");
+                    request_valid_ = false;
+                    return;
+                }
+                // reshape to 2d vector
+                cartesian_waypoints.reserve(cartesian_waypoints_flat.size() / 6);
+                for (size_t i = 0; i < cartesian_waypoints_flat.size(); i += 6) {
+                    cartesian_waypoints.emplace_back(cartesian_waypoints_flat.begin() + i,
+                                                 cartesian_waypoints_flat.begin() + i + 6);
+                }
+            }
+
         }
 
         static std::optional<ValidateRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
             try {
-                return ValidateRequest(value, adapter->get_num_joints());
+                auto validate_req = ValidateRequest(value, adapter->get_num_joints());
+                if (validate_req.request_valid_) {
+                    return validate_req;
+                } else {
+                    return std::nullopt;
+                }
             } catch (...) {
             }
             return std::nullopt;
@@ -50,6 +85,11 @@ class RPCHandler {
         int num_joints = 0;
         pvxs::shared_array<const double> joint_waypoints_flat = {};
         std::vector<std::vector<double>> joint_waypoints = {};
+        pvxs::shared_array<const double> cartesian_waypoints_flat = {};
+        std::vector<std::vector<double>> cartesian_waypoints = {};
+
+      private:
+        bool request_valid_ = true;
     };
 
     struct ValidateResponse {

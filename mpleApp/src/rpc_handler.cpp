@@ -71,17 +71,39 @@ void RPCHandler::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
+    // Collision, workspace, and joint limit checks require both joint
+    // angles and TCP pose, hence why we need FK and IK depending on
+    // which waypoints were given to the Validate method
     std::optional<std::string> hit;
-    for (auto& wp : request->joint_waypoints) {
-        auto tcp_pose = adapter_->fk(wp);
-        if (!tcp_pose) {
-            printf("Adapter does not provide FK. mple must do it.\n");
-            // Compute FK here. Probably need URDF or DH params
-            break;
-        } else {
-            Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
-            auto hit = driver_->collision_world.check_point(p);
-            if (hit) { break; }
+    if (!request->joint_waypoints.empty()) {
+        for (auto& wp : request->joint_waypoints) {
+            auto tcp_pose = adapter_->fk(wp);
+            if (!tcp_pose) {
+                printf("Adapter does not provide FK. mple must do it.\n");
+                // TODO: Compute FK here.
+                // Probably need URDF or DH params
+                break;
+            } else {
+                // TODO: check joint and workspace limits
+                Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
+                auto hit = driver_->collision_world.check_point(p);
+                if (hit) { break; }
+            }
+        }
+    } else if (!request->cartesian_waypoints.empty()) {
+        for (auto& wp : request->cartesian_waypoints) {
+            auto joints = adapter_->ik(wp);
+            if (!joints) {
+                printf("Adapter does not provide IK (or it failed?). mple must do it.\n");
+                // TODO: Compute IK here
+                // Probably need URDF or DH params
+                break;
+            } else {
+                // TODO: check joint and workspace limits
+                Position p{wp[0], wp[1], wp[2]};
+                auto hit = driver_->collision_world.check_point(p);
+                if (hit) { break; }
+            }
         }
     }
 
