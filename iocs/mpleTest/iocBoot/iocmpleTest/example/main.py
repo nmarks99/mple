@@ -2,6 +2,7 @@
 from p4p.client.thread import Context
 from p4p import Value, Type
 from math import pi
+import numpy as np
 
 ctxt = Context("pva")
 PREFIX = "mpleTest:"
@@ -43,10 +44,38 @@ def validate_and_execute(joint_waypoints):
         print("Validation failed. Aborting.")
 
 
-wps = [
-    #  0.0, 0.0,
-    pi/2, pi/2,
-    pi/6, pi/2,
-    -pi/3, -pi/3
+def compute_ik(poses):
+    ValidateMsg = Value(Type([
+        ('cartesian_waypoints', 'ad'),
+    ]), {
+        'cartesian_waypoints': poses,
+    })
+
+    result = ctxt.rpc(f"{PREFIX}ComputeIK", ValidateMsg)
+    #  print(f"Valid: {result['valid']}")
+    #  print(f"Description: {result['description']}")
+    #  print(f"Joint angles: {result['joint_angles']}")
+    return result
+
+
+#  wps = [
+    #  0.86, 2.0,
+    #  #  pi/2, pi/2,
+    #  #  pi/6, pi/2,
+    #  #  -pi/3, -pi/3
+#  ]
+#  validate_and_execute(wps)
+
+
+poses = [
+ 0.300, 0.0, 0.0, 0.0, 0.0, 0.0,
+ 0.300, 0.100, 0.0, 0.0, 0.0, 0.0,
+ #  0.300, 0.200, 0.0, 0.0, 0.0, 0.0,
+ #  0.300, 0.300, 0.0, 0.0, 0.0, 0.0,
+ #  0.300, 0.400, 0.0, 0.0, 0.0, 0.0,
 ]
-validate_and_execute(wps)
+
+res = compute_ik(poses)
+joint_angles = res["joint_angles"]
+print(joint_angles)
+execute(joint_angles)

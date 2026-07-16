@@ -23,6 +23,57 @@ RPCHandler::RPCHandler(MpleDriver* driver, MpleAdapter* adapter, const std::stri
         execute_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
+
+    // Inverse Kinematics
+    ik_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        ik_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
+}
+
+void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+    printf("ik callback entered\n");
+    IKResponse response;
+    auto request = IKRequest::build(request_value);
+
+    if (!request) {
+        response.valid = false;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
+    }
+
+    // FIX: use adapter_->get_num_joints instead of hardcoded *2
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * 2);
+    printf("size = %ld\n", response.joint_angles_flat.size());
+    size_t ind = 0;
+    for (auto& wp : request->cartesian_waypoints) {
+        printf("wp = %lf,%lf,%lf,%lf,%lf,%lf\n", wp[0],wp[1],wp[2],wp[3],wp[4],wp[5]);
+        auto joints = adapter_->ik(wp);
+        if (!joints) {
+            response.valid = false;
+            response.description = "Inverse kinematics failed";
+            op->reply(response.to_value());
+            return;
+        }
+        for (const auto& j : *joints) {
+            printf("attempting to assign %lf\n", j);
+            response.joint_angles_flat[ind] = j;
+            printf("assign worked\n");
+            ind += 1;
+        }
+    }
+
+    for (const auto& v : response.joint_angles_flat) {
+        printf("%lf\n", v);
+    }
+
+    response.valid = true;
+    response.description = "Okay";
+    op->reply(response.to_value());
 }
 
 void RPCHandler::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

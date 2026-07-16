@@ -20,6 +20,7 @@ class RPCHandler {
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::server::SharedPV ik_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     struct ValidateRequest {
         ValidateRequest(pvxs::Value& value, int njoints)
@@ -159,6 +160,74 @@ class RPCHandler {
         }
     };
 
+    struct IKRequest {
+      public:
+        IKRequest(pvxs::Value& value)
+            : cartesian_waypoints_flat(value["cartesian_waypoints"].as<pvxs::shared_array<const double>>()) {
+
+                if (cartesian_waypoints_flat.size() % 6 != 0) {
+                    printf("cartesian_waypoints is not reshapeble to vectors of length 6 (x,y,z,rx,ry,rz)\n");
+                    request_valid_ = false;
+                    return;
+                }
+
+                printf("IKRequest: ");
+                for (const auto& v : cartesian_waypoints_flat) {
+                    printf("%lf ", v);
+                }
+                printf("\n");
+
+                // reshape to 2d vector
+                cartesian_waypoints.reserve(cartesian_waypoints_flat.size() / 6);
+                for (size_t i = 0; i < cartesian_waypoints_flat.size(); i += 6) {
+                    cartesian_waypoints.emplace_back(cartesian_waypoints_flat.begin() + i,
+                                                 cartesian_waypoints_flat.begin() + i + 6);
+                }
+        }
+
+        pvxs::shared_array<const double> cartesian_waypoints_flat = {};
+        std::vector<std::vector<double>> cartesian_waypoints = {};
+
+        static std::optional<IKRequest> build(pvxs::Value& value) {
+            try {
+                auto ik_req = IKRequest(value);
+                if (ik_req.request_valid_) {
+                    return ik_req;
+                } else {
+                    return std::nullopt;
+                }
+            } catch (...) {
+            }
+            return std::nullopt;
+        }
+
+      private:
+        bool request_valid_ = true;
+    };
+
+
+    struct IKResponse {
+        bool valid = false;
+        std::string description = "";
+        pvxs::shared_array<double> joint_angles_flat = {};
+
+        pvxs::TypeDef response() {
+            return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+                pvxs::members::Bool("valid"),
+                pvxs::members::String("description"),
+                pvxs::members::Float64A("joint_angles"),
+            });
+        }
+
+        pvxs::Value to_value() {
+            auto value = response().create();
+            value["valid"] = valid;
+            value["description"] = description;
+            value["joint_angles"] = joint_angles_flat.freeze();
+            return value;
+        }
+    };
+
     void validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value);
 
@@ -166,5 +235,8 @@ class RPCHandler {
                           pvxs::Value&& request_value);
 
     void execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value);
+
+    void ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value);
 };
