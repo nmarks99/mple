@@ -27,13 +27,8 @@ class RPCHandler {
               joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
               cartesian_waypoints_flat(value["cartesian_waypoints"].as<pvxs::shared_array<const double>>()) {
 
-            if (joint_waypoints_flat.empty() && cartesian_waypoints_flat.empty()) {
-                printf("One of 'joint_waypoints' or 'cartesian_waypoints' must be provided\n");
-                request_valid_ = false;
-                return;
-            }
-
-            if (!joint_waypoints_flat.empty() && !cartesian_waypoints_flat.empty()) {
+            // Invalid if both full or both empty
+            if (joint_waypoints_flat.empty() == cartesian_waypoints_flat.empty()) {
                 printf("Only one of 'joint_waypoints' or 'cartesian_waypoints' must be provided\n");
                 request_valid_ = false;
                 return;
