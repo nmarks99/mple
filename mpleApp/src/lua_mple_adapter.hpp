@@ -125,9 +125,12 @@ class LuaMpleAdapter : public MpleAdapter {
                 value = extract_table_to_vector(lua_state_);
             } else {
                 lua_pop(lua_state_, 1);
-                std::cerr << std::string(fn_name) + " must return a table of numbers, but doesn't\n";
+                // nil means generally that IK failed, otherwise perhaps user's lua method is just
+                // using the wrong return type, so we say so in the error message here
+                if (return_type != LUA_TNIL) {
+                    std::cerr << std::string(fn_name) + " must return a table of numbers, but doesn't\n";
+                }
                 return std::nullopt;
-                // throw std::runtime_error(std::string(fn_name) + " must return a table of numbers, but doesn't");
             }
         }
 

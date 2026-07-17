@@ -171,12 +171,6 @@ class RPCHandler {
                     return;
                 }
 
-                printf("IKRequest: ");
-                for (const auto& v : cartesian_waypoints_flat) {
-                    printf("%lf ", v);
-                }
-                printf("\n");
-
                 // reshape to 2d vector
                 cartesian_waypoints.reserve(cartesian_waypoints_flat.size() / 6);
                 for (size_t i = 0; i < cartesian_waypoints_flat.size(); i += 6) {

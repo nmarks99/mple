@@ -1,4 +1,5 @@
 #include <thread>
+#include <sstream>
 #include "mple_driver.hpp"
 #include "rpc_handler.hpp"
 
@@ -45,15 +46,21 @@ void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    // FIX: use adapter_->get_num_joints instead of hardcoded *2
-    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * 2);
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * adapter_->get_num_joints());
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
-        printf("wp = %lf,%lf,%lf,%lf,%lf,%lf\n", wp[0],wp[1],wp[2],wp[3],wp[4],wp[5]);
         auto joints = adapter_->ik(wp);
         if (!joints) {
             response.valid = false;
-            response.description = "Inverse kinematics failed";
+            std::stringstream msg;
+            msg << "Inverse kinematics failed for waypoint (";
+            auto it = wp.begin();
+            while (std::next(it) != wp.end())  {
+                msg << *it << ",";
+                ++it;
+            }
+            msg << *it << ")\n";
+            response.description = msg.str();
             op->reply(response.to_value());
             return;
         }
@@ -61,10 +68,6 @@ void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             response.joint_angles_flat[ind] = j;
             ind += 1;
         }
-    }
-
-    for (const auto& v : response.joint_angles_flat) {
-        printf("%lf\n", v);
     }
 
     response.valid = true;

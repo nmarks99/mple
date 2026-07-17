@@ -52,9 +52,8 @@ def compute_ik(poses):
     })
 
     result = ctxt.rpc(f"{PREFIX}ComputeIK", ValidateMsg)
-    #  print(f"Valid: {result['valid']}")
-    #  print(f"Description: {result['description']}")
-    #  print(f"Joint angles: {result['joint_angles']}")
+    print(f"Valid: {result['valid']}")
+    print(f"Description: {result['description']}")
     return result
 
 
@@ -68,13 +67,18 @@ def compute_ik(poses):
 
 
 poses = [
- 0.200, -0.400, 0.0, 0.0, 0.0, 0.0,
- 0.200, 0.400, 0.0, 0.0, 0.0, 0.0,
- -0.200, 0.400, 0.0, 0.0, 0.0, 0.0,
- -0.200, -0.400, 0.0, 0.0, 0.0, 0.0,
+ 0.550, 0.000, 0.0, 0.0, 0.0, 0.0,
+ 0.200, -0.200, 0.0, 0.0, 0.0, 0.0,
+ 0.200, 0.200, 0.0, 0.0, 0.0, 0.0,
+ -0.200, 0.200, 0.0, 0.0, 0.0, 0.0,
+ -0.200, -0.200, 0.0, 0.0, 0.0, 0.0,
+ 0.550, 0.000, 0.0, 0.0, 0.0, 0.0,
 ]
 
-res = compute_ik(poses)
-joint_angles = res["joint_angles"]
-print(joint_angles * 180.0/np.pi)
-execute(joint_angles)
+ik_result = compute_ik(poses)
+if (ik_result["valid"]):
+    valid = validate(ik_result["joint_angles"])
+    if (valid):
+        execute(ik_result["joint_angles"])
+    else:
+        print("Invalid path")

@@ -37,28 +37,26 @@ function move(joints, speed, accel)
     epics.put(P.. "J2Target.VAL", math.deg(joints[2]))
     epics.put(P .. "Move.PROC", 1)
 
-    print("Moving to WP: " .. math.deg(joints[1]) .. "," .. math.deg(joints[2]))
+    -- print("Moving to WP: " .. math.deg(joints[1]) .. "," .. math.deg(joints[2]))
 
-    -- TODO: add timeout for both of these
+    osi.sleep(0.1)
+    -- HACK: the below is 'better', but if we are already
+    -- at the first point, this will get stuck
     -- Wait for motion to start
-    -- FIX: if we are already at the first point, this will get stuck
-    print("waiting for motion to start...")
-    while true do
-        if (epics.get(P .. "Moving") == 1) then
-            break
-        end
-        osi.sleep(0.02)
-    end
-    print("started\n")
+    -- while true do
+        -- if (epics.get(P .. "Moving") == 1) then
+            -- break
+        -- end
+        -- osi.sleep(0.02)
+    -- end
+
     -- Wait for motion to complete
-    print("waiting for motion to finish...")
     while true do
         if (epics.get(P .. "Moving") == 0) then
             break
         end
         osi.sleep(0.02)
     end
-    print("done\n")
     return true
 end
 
@@ -72,21 +70,49 @@ function fk(joints)
 end
 
 -- returns joint angles needed to achieve given TCP pose
+-- function ik(tcp_pose)
+    -- local x = tcp_pose[1]
+    -- local y = tcp_pose[2]
+--
+    -- -- floating point precision can cause value
+    -- -- to be slightly outside of [-1.0,1.0]
+    -- local op = (x*x + y*y - L1*L1 - L2*L2) / (2*L1*L2)
+    -- if op > 1.0 then op = 1.0 end
+    -- if op < -1.0 then op = -1.0 end
+    -- local th2 = math.acos(op)
+--
+    -- local th1 = math.atan(y, x) - math.atan((L2 * math.sin(th2)), (L1 + L2 * math.cos(th2)))
+--
+    -- return {th1, th2}
+-- end
+
+-- returns joint angles needed to achieve given TCP pose
 function ik(tcp_pose)
     local x = tcp_pose[1]
     local y = tcp_pose[2]
 
-    -- floating point precision can cause value
-    -- to be slightly outside of [-1.0,1.0]
-    local op = (x*x + y*y - L1*L1 - L2*L2) / (2*L1*L2)
-    if op > 1.0 then op = 1.0 end
-    if op < -1.0 then op = -1.0 end
-    local th2 = math.acos(op)
+    -- Workspace boundary check with small epsilon for numerical jitter
+    local d_sq = x*x + y*y
+    local max_reach = L1 + L2
+    local min_reach = math.abs(L1 - L2)
+    local eps = 1e-6
+    local max_limit = max_reach + eps
+    local min_limit = min_reach - eps
+    if d_sq > (max_limit * max_limit) or d_sq < (min_limit * min_limit) then
+        -- unreachable
+        return nil
+    end
 
+    -- need to clamp this due to numerical rounding errors
+    local op = (d_sq - L1*L1 - L2*L2) / (2*L1*L2)
+    op = math.max(-1.0, math.min(1.0, op))
+
+    local th2 = math.acos(op)
     local th1 = math.atan(y, x) - math.atan((L2 * math.sin(th2)), (L1 + L2 * math.cos(th2)))
 
     return {th1, th2}
 end
+
 
 function stop()
     epics.put(P .. "Stop.PROC", 1)

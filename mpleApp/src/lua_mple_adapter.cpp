@@ -78,7 +78,7 @@ std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>&
 
     auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
     if (value) {
-        if (value->size() != get_num_joints())  {
+        if (value->size() != static_cast<size_t>(get_num_joints()))  {
             throw std::runtime_error("Returned array from ik must be equal to the number of joints");
         }
     } else {
