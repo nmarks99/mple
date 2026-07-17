@@ -35,7 +35,6 @@ RPCHandler::RPCHandler(MpleDriver* driver, MpleAdapter* adapter, const std::stri
 
 void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-    printf("ik callback entered\n");
     IKResponse response;
     auto request = IKRequest::build(request_value);
 
@@ -48,7 +47,6 @@ void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
     // FIX: use adapter_->get_num_joints instead of hardcoded *2
     response.joint_angles_flat.resize(request->cartesian_waypoints.size() * 2);
-    printf("size = %ld\n", response.joint_angles_flat.size());
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         printf("wp = %lf,%lf,%lf,%lf,%lf,%lf\n", wp[0],wp[1],wp[2],wp[3],wp[4],wp[5]);
@@ -60,9 +58,7 @@ void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             return;
         }
         for (const auto& j : *joints) {
-            printf("attempting to assign %lf\n", j);
             response.joint_angles_flat[ind] = j;
-            printf("assign worked\n");
             ind += 1;
         }
     }

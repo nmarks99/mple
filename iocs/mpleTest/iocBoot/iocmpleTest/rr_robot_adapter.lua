@@ -75,8 +75,16 @@ end
 function ik(tcp_pose)
     local x = tcp_pose[1]
     local y = tcp_pose[2]
-    local th2 = math.acos((x*x + y*y - L1*L1 - L2*L2) / (2*L1*L2))
-    local th1 = math.atan(y/x) + math.atan((L2*math.sin(th2)) / (L1+L2*math.cos(th2)))
+
+    -- floating point precision can cause value
+    -- to be slightly outside of [-1.0,1.0]
+    local op = (x*x + y*y - L1*L1 - L2*L2) / (2*L1*L2)
+    if op > 1.0 then op = 1.0 end
+    if op < -1.0 then op = -1.0 end
+    local th2 = math.acos(op)
+
+    local th1 = math.atan(y, x) - math.atan((L2 * math.sin(th2)), (L1 + L2 * math.cos(th2)))
+
     return {th1, th2}
 end
 
