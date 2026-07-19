@@ -1,7 +1,49 @@
 #include <thread>
-#include <sstream>
+#include <charconv>
+#include <optional>
 #include "mple_driver.hpp"
 #include "rpc_handler.hpp"
+
+template <typename T>
+std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
+
+    static_assert(std::is_arithmetic_v<T>);
+
+    if (vec.empty()) {
+        return "()";
+    }
+
+    // Guess how much space we'll need and reserve it
+    std::string out("(");
+    const size_t GUESS_NUMBER_OF_CHARS = (vec.size() * 8) + 2;
+    out.reserve(GUESS_NUMBER_OF_CHARS);
+
+    const size_t buf_size = 64;
+    char buf[buf_size];
+
+    // Process first to deal with trailing delimiter
+    auto it = vec.begin();
+    auto result = std::to_chars(buf, buf + buf_size, *it);
+    if (result.ec != std::errc()) {
+        return std::nullopt;
+    }
+    out.append(buf, result.ptr);
+    ++it;
+
+    // append a comma then the next converted number each time
+    for (; it != vec.end(); ++it) {
+        out.push_back(',');
+        result = std::to_chars(buf, buf + buf_size, *it);
+        if (result.ec != std::errc()) {
+            return std::nullopt;
+        }
+        out.append(buf, result.ptr);
+    }
+    out.push_back(')');
+
+    return out;
+}
+
 
 RPCHandler::RPCHandler(MpleDriver* driver, MpleAdapter* adapter, const std::string& prefix) : driver_(driver), adapter_(adapter) {
     assert(driver_ != nullptr && "driver must not be null");
@@ -52,15 +94,8 @@ void RPCHandler::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         auto joints = adapter_->ik(wp);
         if (!joints) {
             response.valid = false;
-            std::stringstream msg;
-            msg << "Inverse kinematics failed for waypoint (";
-            auto it = wp.begin();
-            while (std::next(it) != wp.end())  {
-                msg << *it << ",";
-                ++it;
-            }
-            msg << *it << ")\n";
-            response.description = msg.str();
+            auto wp_string = vector_to_string(wp);
+            response.description = "Inverse kinematics failed for waypoint " + vector_to_string(wp).value_or("(?)");
             op->reply(response.to_value());
             return;
         }
