@@ -24,9 +24,9 @@ wheels = [
 ]
 
 [[package]]
-name = "example"
+name = "mple"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "p4p" },
 ]

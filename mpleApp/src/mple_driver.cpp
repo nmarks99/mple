@@ -222,7 +222,7 @@ static const iocshArg MpleDriverArg0 = {"Adapter name", iocshArgString};
 static const iocshArg MpleDriverArg1 = {"IOC prefix", iocshArgString};
 static const iocshArg MpleDriverArg2 = {"Obstacles json file", iocshArgString};
 static const iocshArg* const MpleDriverArgs[3] = {&MpleDriverArg0, &MpleDriverArg1, &MpleDriverArg2};
-static const iocshFuncDef MpleDriverFuncDef = {"MpleDriverConfig", 3, MpleDriverArgs};
+static const iocshFuncDef MpleDriverFuncDef = {"MpleConfig", 3, MpleDriverArgs};
 
 static void MpleDriverCallFunc(const iocshArgBuf* args) { MpleDriverConfig(args[0].sval, args[1].sval, args[2].sval); }
 
