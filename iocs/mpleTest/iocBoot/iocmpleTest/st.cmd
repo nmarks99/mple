@@ -12,8 +12,8 @@ luaLoadFile("rr_robot.lua", "P=$(PREFIX),STATE=LUASTATE0")
 
 # Load the adapter for our robot and create a mple instance
 LuaMpleAdapterConfig("rr_robot", "rr_robot_adapter.lua")
-MpleDriverConfig("planner1", "rr_robot", "obstacles.json")
-dbLoadRecords("$(MPLE)/db/mple.db", "P=$(PREFIX),PORT=planner1")
+MpleDriverConfig("rr_robot", "$(PREFIX)", "obstacles.json")
+# dbLoadRecords("$(MPLE)/db/mple.db", "P=$(PREFIX),PORT=planner1")
 
 ###############################################################################
 iocInit

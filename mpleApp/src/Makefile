@@ -30,7 +30,6 @@ USR_INCLUDES += -I$(TOP)/deps/json/single_include
 
 # source files to be compiled and added to the library
 mple_SRCS += mple_driver.cpp
-mple_SRCS += rpc_handler.cpp
 mple_SRCS += collisions.cpp
 mple_SRCS += lua_mple_adapter.cpp
 mple_SRCS += mple_adapter_registry.cpp

@@ -1,86 +1,225 @@
-#include <iocsh.h>
-
-#include "epicsExport.h"
-#include "epicsThread.h"
-
-#include "rpc_handler.hpp"
+#include <thread>
+#include <charconv>
+#include <optional>
 #include "mple_driver.hpp"
-// #include "services.hpp"
 
-static void poll_thread_C(void* pPvt) {
-    MpleDriver* pMpleDriver = (MpleDriver*)pPvt;
-    pMpleDriver->poll();
+#include "iocsh.h"
+#include "epicsExport.h"
+
+template <typename T>
+std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
+
+    static_assert(std::is_arithmetic_v<T>);
+
+    if (vec.empty()) {
+        return "()";
+    }
+
+    // Guess how much space we'll need and reserve it
+    std::string out("(");
+    const size_t GUESS_NUMBER_OF_CHARS = (vec.size() * 8) + 2;
+    out.reserve(GUESS_NUMBER_OF_CHARS);
+
+    const size_t buf_size = 64;
+    char buf[buf_size];
+
+    // Process first to deal with trailing delimiter
+    auto it = vec.begin();
+    auto result = std::to_chars(buf, buf + buf_size, *it);
+    if (result.ec != std::errc()) {
+        return std::nullopt;
+    }
+    out.append(buf, result.ptr);
+    ++it;
+
+    // append a comma then the next converted number each time
+    for (; it != vec.end(); ++it) {
+        out.push_back(',');
+        result = std::to_chars(buf, buf + buf_size, *it);
+        if (result.ec != std::errc()) {
+            return std::nullopt;
+        }
+        out.append(buf, result.ptr);
+    }
+    out.push_back(')');
+
+    return out;
 }
 
-constexpr int MAX_CONTROLLERS = 1;
-constexpr int INTERFACE_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask | asynDrvUserMask;
-constexpr int INTERRUPT_MASK = asynInt32Mask | asynFloat64Mask | asynOctetMask;
-constexpr int ASYN_FLAGS = ASYN_MULTIDEVICE | ASYN_CANBLOCK;
-
-MpleDriver::MpleDriver(const char* port, const char* adapter_name, const char* obstacles_file)
-    : asynPortDriver(port, MAX_CONTROLLERS, INTERFACE_MASK, INTERRUPT_MASK, ASYN_FLAGS, 1, 0, 0), collision_world(CollisionWorld{}) {
-
-    // Get the IOC prefix
-    std::string prefix = std::getenv("PREFIX");
-    if (!prefix.size()) {
-        throw std::runtime_error("PREFIX environment variable not found, no custom PV loaded\n");
+MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& obstacles_file) {
+    adapter_ = find_adapter(adapter_name);
+    if (!adapter_) {
+        throw std::runtime_error("Can't find adapter " + std::string(adapter_name));
     }
 
-    // Find MpleAdapter by name
-    // This implements the robot specific functions needed by the path planner
-    auto* adapter = find_adapter(adapter_name);
-    if (!adapter) {
-        throw std::runtime_error("Failed to find adapter: " + std::string(adapter_name));
+    if (!obstacles_file.empty()) {
+        printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
+        collision_world_.add_from_json(obstacles_file);
     }
 
-    // Create asyn parameters
-    createParam("MT_ACTIVE", asynParamInt32, &idx_mt_active_);
-    createParam("MT_ERROR", asynParamInt32, &idx_mt_error_);
+    running_value_ = pvxs::nt::NTScalar{pvxs::TypeCode::Bool}.create();
+    running_value_["value"] = false;
+    running_pv_.open(running_value_);
+    pvxs::ioc::server().addPV(prefix + "Running", running_pv_);
 
-    // RPCHandler sets up PVXS PVs with RPC callbacks
-    rpc_handler_ = std::make_unique<RPCHandler>(this, adapter, prefix);
+    // Set up PVXS RPC callbacks for our custom PVs
+    //
+    // Validate
+    validate_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        validate_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "Validate", validate_pv_);
 
-    if (obstacles_file) {
-        printf("Loading obstacles from json file %s\n", obstacles_file);
-        collision_world.add_from_json(obstacles_file);
-    }
+    // Execute
+    execute_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        execute_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
-    // Create polling thread
-    epicsThreadCreate("MpleDriverPoller", epicsThreadPriorityLow,
-                      epicsThreadGetStackSize(epicsThreadStackMedium), (EPICSTHREADFUNC)poll_thread_C, this);
+    // Inverse Kinematics
+    ik_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        ik_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
-void MpleDriver::poll() {
-    while (true) {
-        lock();
+void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+    IKResponse response;
+    auto request = IKRequest::build(request_value);
 
-        callParamCallbacks();
-        unlock();
-        epicsThreadSleep(1.0);
+    if (!request) {
+        response.valid = false;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
     }
+
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * adapter_->get_num_joints());
+    size_t ind = 0;
+    for (auto& wp : request->cartesian_waypoints) {
+        auto joints = adapter_->ik(wp);
+        if (!joints) {
+            response.valid = false;
+            auto wp_string = vector_to_string(wp);
+            response.description = "Inverse kinematics failed for waypoint " + vector_to_string(wp).value_or("(?)");
+            op->reply(response.to_value());
+            return;
+        }
+        for (const auto& j : *joints) {
+            response.joint_angles_flat[ind] = j;
+            ind += 1;
+        }
+    }
+
+    response.valid = true;
+    response.description = "Okay";
+    op->reply(response.to_value());
 }
 
-// asynStatus MpleDriver::writeInt32(asynUser* pasynUser, epicsInt32 value) {
-// int function = pasynUser->reason;
-// callParamCallbacks();
-// return comm_ok ? asynSuccess : asynError;
-// }
+void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+    ExecuteResponse response;
+    auto request = ExecuteRequest::build(request_value, adapter_);
 
-// asynStatus MpleDriver::writeFloat64(asynUser* pasynUser, epicsFloat64 value) {
-// // int function = pasynUser->reason;
-// bool comm_ok = true;
-// callParamCallbacks();
-// return comm_ok ? asynSuccess : asynError;
-// }
+    if (!request) {
+        response.error_code = -1;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
+    }
+
+    std::thread exec_thread([req = std::move(request.value()), this]() {
+        running_value_["value"] = true;
+        running_pv_.post(running_value_);
+
+        adapter_->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
+
+        running_value_["value"] = false;
+        running_pv_.post(running_value_);
+    });
+    exec_thread.detach();
+
+    // Reply right away saying we started the process
+    response.error_code = 0;
+    response.description = "Execution started";
+    op->reply(response.to_value());
+}
+
+void MpleDriver::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+
+    ValidateResponse response;
+    auto request = ValidateRequest::build(request_value, adapter_);
+
+    if (!request) {
+        response.valid = false;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
+    }
+
+    // Collision, workspace, and joint limit checks require both joint
+    // angles and TCP pose, hence why we need FK and IK depending on
+    // which waypoints were given to the Validate method
+    std::optional<std::string> hit;
+    if (!request->joint_waypoints.empty()) {
+        for (auto& wp : request->joint_waypoints) {
+            auto tcp_pose = adapter_->fk(wp);
+            if (!tcp_pose) {
+                printf("Adapter does not provide FK. mple must do it.\n");
+                // TODO: Compute FK here.
+                // Probably need URDF or DH params
+                break;
+            } else {
+                // TODO: check joint and workspace limits
+                Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
+                auto hit = collision_world_.check_point(p);
+                if (hit) { break; }
+            }
+        }
+    } else if (!request->cartesian_waypoints.empty()) {
+        for (auto& wp : request->cartesian_waypoints) {
+            auto joints = adapter_->ik(wp);
+            if (!joints) {
+                printf("Adapter does not provide IK (or it failed?). mple must do it.\n");
+                // TODO: Compute IK here
+                // Probably need URDF or DH params
+                break;
+            } else {
+                // TODO: check joint and workspace limits
+                Position p{wp[0], wp[1], wp[2]};
+                auto hit = collision_world_.check_point(p);
+                if (hit) { break; }
+            }
+        }
+    }
+
+    if (hit) {
+        response.valid = false;
+        response.description = "Collision with " + *hit;
+    } else {
+        response.valid = true;
+        response.description = "No collisions detected";
+    }
+
+    op->reply(response.to_value());
+}
+
 
 // register function for iocsh
-extern "C" int MpleDriverConfig(const char* port, const char* adapter_name, const char* obstacles_file) {
-    new MpleDriver(port, adapter_name, obstacles_file);
-    return asynSuccess;
+extern "C" void MpleDriverConfig(const char* adapter_name, const char* prefix, const char* obstacles_file) {
+    new MpleDriver(adapter_name, prefix, obstacles_file);
 }
 
-static const iocshArg MpleDriverArg0 = {"This driver's name", iocshArgString};
-static const iocshArg MpleDriverArg1 = {"Adapter name", iocshArgString};
+static const iocshArg MpleDriverArg0 = {"Adapter name", iocshArgString};
+static const iocshArg MpleDriverArg1 = {"IOC prefix", iocshArgString};
 static const iocshArg MpleDriverArg2 = {"Obstacles json file", iocshArgString};
 static const iocshArg* const MpleDriverArgs[3] = {&MpleDriverArg0, &MpleDriverArg1, &MpleDriverArg2};
 static const iocshFuncDef MpleDriverFuncDef = {"MpleDriverConfig", 3, MpleDriverArgs};
