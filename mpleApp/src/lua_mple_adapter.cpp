@@ -53,23 +53,6 @@ bool LuaMpleAdapter::move(const std::vector<double>& waypoint, double speed, dou
     return ret.value();
 }
 
-// bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const {
-    // std::lock_guard<std::recursive_mutex> lock(mutex_);
-    // bool ok = true;
-    // for (auto& wp : waypoints) {
-        // // TODO: this needs to be done in a separate thread?
-        // auto ret = call_lua_method<bool>("move", wp, speed, accel);
-        // if (!ret) {
-            // throw std::runtime_error("Error calling lua move method");
-        // }
-        // ok = ret.value();
-        // if (!ok) {
-            // break;
-        // }
-    // }
-    // return ok;
-// }
-
 std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>& joint_angles) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 

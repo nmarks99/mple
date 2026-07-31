@@ -57,6 +57,17 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         collision_world_.add_from_json(obstacles_file);
     }
 
+
+    // TODO: remove separate rnning when confirmed this works
+    namespace M = pvxs::members;
+    status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
+        M::Bool("running"),
+        M::Int32("iter"),
+        M::Int32("max")
+    }).create();
+    status_pv_.open(status_value_);
+    pvxs::ioc::server().addPV(prefix + "Status", stop_pv_);
+
     // Used to stop a running mple task
     stop_value_ = pvxs::nt::NTScalar{}.create();
     stop_pv_.onPut([this](pvxs::server::SharedPV& pv,
@@ -73,6 +84,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     running_pv_.open(running_value_);
     pvxs::ioc::server().addPV(prefix + "Running", running_pv_);
 
+    // TODO: pv.open a value on these so clients can see them
     // Validate
     validate_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -151,18 +163,24 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
 
     std::thread exec_thread([req = std::move(request.value()), this]() {
-        printf("exec_thread start\n");
         running_value_["value"] = true;
         running_pv_.post(running_value_);
 
         bool ok = false;
         unsigned int count = 0;
+
+        status_value_["running"] = true;
+        status_value_["iter"] = 0;
+        status_value_["max"] = req.joint_waypoints.size();
+
         for (auto& wp : req.joint_waypoints) {
             ok = adapter_->move(wp, req.speed, req.acceleration);
             if (!ok) {
                 break;
             }
             count++;
+            status_value_["iter"] = count;
+            status_pv_.post(status_value_);
         }
         // adapter_->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
 
