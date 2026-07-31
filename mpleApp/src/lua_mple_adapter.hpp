@@ -17,7 +17,8 @@ class LuaMpleAdapter : public MpleAdapter {
     std::vector<double> get_joint_positions() const override;
     std::vector<double> get_tcp_pose() const override;
     void stop() const override;
-    bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
+    // bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
+    bool move(const std::vector<double>& waypoint, double speed, double accel) const override;
     std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
     std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
 

@@ -151,10 +151,20 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
 
     std::thread exec_thread([req = std::move(request.value()), this]() {
+        printf("exec_thread start\n");
         running_value_["value"] = true;
         running_pv_.post(running_value_);
 
-        adapter_->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
+        bool ok = false;
+        unsigned int count = 0;
+        for (auto& wp : req.joint_waypoints) {
+            ok = adapter_->move(wp, req.speed, req.acceleration);
+            if (!ok) {
+                break;
+            }
+            count++;
+        }
+        // adapter_->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
 
         running_value_["value"] = false;
         running_pv_.post(running_value_);

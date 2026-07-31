@@ -1,7 +1,7 @@
 from mple import Mple
 
 def main():
-    mple = Mple("mpleTest:")
+    mple = Mple("mpleTest:mple:")
 
     poses = [
         0.550, 0.000, 0.0, 0.0, 0.0, 0.0,

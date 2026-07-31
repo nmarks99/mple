@@ -58,9 +58,9 @@ endif
 
 $(PROD_NAME)_LIBS += $(EPICS_BASE_IOC_LIBS)
 
-# Robot specific adapter for path planner
-$(PROD_NAME)_SRCS  += example_adapter.cpp
-$(DBD_NAME)_DBD += example_adapter.dbd
+# # Robot specific adapter for path planner
+# $(PROD_NAME)_SRCS  += example_adapter.cpp
+# $(DBD_NAME)_DBD += example_adapter.dbd
 
 # <name>_registerRecordDeviceDriver.cpp will be created from <name>.dbd
 $(PROD_NAME)_SRCS  += $(DBD_NAME)_registerRecordDeviceDriver.cpp $(PROD_NAME)Main.cpp

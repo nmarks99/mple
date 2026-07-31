@@ -27,10 +27,15 @@ class MpleAdapter {
     /// \brief Stops all active motion of the system
     virtual void stop() const = 0;
 
-    /// \brief Moves the system through the provided joint positions.
-    /// \param speed The joints speeds for all moves in the trajectory.
-    /// \param accel The joint accelerations for all moves in the trajectory.
-    virtual bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
+    // /// \brief Moves the system through the provided joint positions.
+    // /// \param speed The joints speeds for all moves in the trajectory.
+    // /// \param accel The joint accelerations for all moves in the trajectory.
+    // virtual bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
+
+    /// \brief Moves the system to the provided joint position.
+    /// \param speed The joints speeds.
+    /// \param accel The joint accelerations.
+    virtual bool move(const std::vector<double>& waypoint, double speed, double accel) const = 0;
 
     /// \brief Computes forward kinematics for the system
     ///
