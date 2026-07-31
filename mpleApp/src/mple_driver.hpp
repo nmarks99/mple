@@ -20,6 +20,9 @@ class MpleDriver {
     pvxs::Value running_value_;
     pvxs::server::SharedPV running_pv_ = pvxs::server::SharedPV::buildReadonly();
 
+    pvxs::Value stop_value_;
+    pvxs::server::SharedPV stop_pv_ = pvxs::server::SharedPV::buildMailbox();
+
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
@@ -224,6 +227,9 @@ class MpleDriver {
             return value;
         }
     };
+
+    void stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& put_value);
 
     void validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value);

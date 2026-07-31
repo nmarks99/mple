@@ -38,6 +38,8 @@ std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
 
 void LuaMpleAdapter::stop() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
+    printf("LuaMpleAdapter::stop()\n");
+    call_lua_method<LuaReturnVoid>("stop");
     return;
 }
 
@@ -46,6 +48,7 @@ bool LuaMpleAdapter::execute_trajectory(const std::vector<std::vector<double>>& 
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     bool ok = true;
     for (auto& wp : waypoints) {
+        // TODO: this needs to be done in a separate thread?
         auto ret = call_lua_method<bool>("move", wp, speed, accel);
         if (!ret) {
             throw std::runtime_error("Error calling lua move method");

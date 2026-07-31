@@ -12,7 +12,7 @@ luaLoadFile("rr_robot.lua", "P=$(PREFIX),STATE=LUASTATE0")
 
 # Load the adapter for our robot and create a mple instance
 LuaMpleAdapterConfig("rr_robot", "rr_robot_adapter.lua")
-MpleConfig("rr_robot", "$(PREFIX)", "obstacles.json")
+MpleConfig("rr_robot", "$(PREFIX)mple:", "obstacles.json")
 
 ###############################################################################
 iocInit

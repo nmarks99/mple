@@ -65,6 +65,9 @@ class LuaMpleAdapter : public MpleAdapter {
         }
     }
 
+    // Used for functions which return void (nil in lua)
+    struct LuaReturnVoid {};
+
     template <typename T, typename... Args>
     std::optional<T> call_lua_method(const char* fn_name, Args... args) const {
         // Return value
@@ -79,6 +82,17 @@ class LuaMpleAdapter : public MpleAdapter {
 
         // Number of function arguments in the parameter pack
         constexpr std::size_t num_args = sizeof...(args);
+
+        if constexpr (std::is_same_v<T, LuaReturnVoid>) {
+            (lua_push_args(args), ...);
+
+            lua_pcall(lua_state_, num_args, 1, 0);
+            int return_type = lua_type(lua_state_, -1);
+            value = LuaReturnVoid{};
+            if (return_type != LUA_TNIL) {
+                std::cout << "Return value ignored. " << std::string(fn_name) + " should return nil\n";
+            }
+        }
 
         if constexpr (std::is_same_v<T, bool>) {
             (lua_push_args(args), ...);

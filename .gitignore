@@ -23,3 +23,4 @@ scan1Menu.sav
 .loglogin
 compile_commands.json
 *.local
+__pycache__/

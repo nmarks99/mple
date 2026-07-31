@@ -57,13 +57,22 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         collision_world_.add_from_json(obstacles_file);
     }
 
+    // Used to stop a running mple task
+    stop_value_ = pvxs::nt::NTScalar{}.create();
+    stop_pv_.onPut([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& value) {
+        stop_callback(std::move(op), std::move(value));
+    });
+    stop_pv_.open(stop_value_);
+    pvxs::ioc::server().addPV(prefix + "Stop", stop_pv_);
+
+    // Bool to signal if mple is running a motion task
     running_value_ = pvxs::nt::NTScalar{pvxs::TypeCode::Bool}.create();
     running_value_["value"] = false;
     running_pv_.open(running_value_);
     pvxs::ioc::server().addPV(prefix + "Running", running_pv_);
 
-    // Set up PVXS RPC callbacks for our custom PVs
-    //
     // Validate
     validate_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -87,6 +96,12 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         ik_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
+}
+
+void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+    adapter_->stop();
+    op->reply();
 }
 
 void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
