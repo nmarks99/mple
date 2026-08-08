@@ -66,7 +66,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         M::Int32("max")
     }).create();
     status_pv_.open(status_value_);
-    pvxs::ioc::server().addPV(prefix + "Status", stop_pv_);
+    pvxs::ioc::server().addPV(prefix + "Status", status_pv_);
 
     // Used to stop a running mple task
     stop_value_ = pvxs::nt::NTScalar{}.create();
@@ -182,13 +182,17 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
             ok = adapter_->move(wp, req.speed, req.acceleration);
             if (!ok) {
+                printf("adapter_->move returned error. Aboriting motion\n");
                 break;
             }
             count++;
             status_value_["iter"] = count;
             status_pv_.post(status_value_);
         }
-        // adapter_->execute_trajectory(req.joint_waypoints, req.speed, req.acceleration);
+
+        status_value_["running"] = false;
+        status_value_["iter"] = 0;
+        status_pv_.post(status_value_);
 
         running_value_["value"] = false;
         running_pv_.post(running_value_);
