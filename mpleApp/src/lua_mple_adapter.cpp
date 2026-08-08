@@ -38,11 +38,18 @@ std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
 
 void LuaMpleAdapter::stop() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    printf("LuaMpleAdapter::stop()\n");
     call_lua_method<LuaReturnVoid>("stop");
     return;
 }
 
+bool LuaMpleAdapter::moving() const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto ret = call_lua_method<bool>("moving");
+    if (!ret) {
+        throw std::runtime_error("Error calling lua moving method");
+    }
+    return ret.value();
+};
 
 bool LuaMpleAdapter::move(const std::vector<double>& waypoint, double speed, double accel) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);

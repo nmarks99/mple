@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <optional>
 #include <pvxs/iochooks.h>
 #include <pvxs/nt.h>

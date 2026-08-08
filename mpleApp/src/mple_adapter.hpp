@@ -8,9 +8,6 @@ class MpleAdapter {
     virtual ~MpleAdapter() = default;
 
     // TODO:
-    // virtual bool is_moving() const = 0;
-
-    // TODO:
     // virtual ? get_joint_limits() const = 0;
 
     /// \brief Gets the number of joints in the system
@@ -27,10 +24,8 @@ class MpleAdapter {
     /// \brief Stops all active motion of the system
     virtual void stop() const = 0;
 
-    // /// \brief Moves the system through the provided joint positions.
-    // /// \param speed The joints speeds for all moves in the trajectory.
-    // /// \param accel The joint accelerations for all moves in the trajectory.
-    // virtual bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const = 0;
+    /// \brief Tells if the system is currenty in motion or not
+    virtual bool moving() const = 0;
 
     /// \brief Moves the system to the provided joint position.
     /// \param speed The joints speeds.

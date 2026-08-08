@@ -17,7 +17,7 @@ class LuaMpleAdapter : public MpleAdapter {
     std::vector<double> get_joint_positions() const override;
     std::vector<double> get_tcp_pose() const override;
     void stop() const override;
-    // bool execute_trajectory(const std::vector<std::vector<double>>& waypoints, double speed, double accel) const override;
+    bool moving() const override;
     bool move(const std::vector<double>& waypoint, double speed, double accel) const override;
     std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
     std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
@@ -77,6 +77,7 @@ class LuaMpleAdapter : public MpleAdapter {
         // Check that the function exists
         int result = lua_getglobal(lua_state_, fn_name);
         if (result != LUA_TFUNCTION) {
+            std::cout << "Can't find function " << fn_name << std::endl;
             lua_pop(lua_state_, 1);
             return std::nullopt;
         }
@@ -91,7 +92,7 @@ class LuaMpleAdapter : public MpleAdapter {
             int return_type = lua_type(lua_state_, -1);
             value = LuaReturnVoid{};
             if (return_type != LUA_TNIL) {
-                std::cout << "Return value ignored. " << std::string(fn_name) + " should return nil\n";
+                std::cout << "Return value ignored. " << std::string(fn_name) + " should return nil but is type " << return_type << "\n";
             }
         }
 

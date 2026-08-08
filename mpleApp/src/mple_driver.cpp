@@ -162,6 +162,7 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
+    printf("Running execution thread\n");
     std::thread exec_thread([req = std::move(request.value()), this]() {
         running_value_["value"] = true;
         running_pv_.post(running_value_);
@@ -174,6 +175,11 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         status_value_["max"] = req.joint_waypoints.size();
 
         for (auto& wp : req.joint_waypoints) {
+            // wait for current motion to finish
+            while (adapter_->moving()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+
             ok = adapter_->move(wp, req.speed, req.acceleration);
             if (!ok) {
                 break;
