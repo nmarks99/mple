@@ -182,7 +182,7 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
             ok = adapter_->move(wp, req.speed, req.acceleration);
             if (!ok) {
-                printf("adapter_->move returned error. Aboriting motion\n");
+                printf("adapter_->move returned error. Aborting motion\n");
                 break;
             }
             count++;

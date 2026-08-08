@@ -1,7 +1,8 @@
 local epics = require("epics")
 local osi = require("osi")
 
--- TODO: make configurable
+-- TODO: make configurable by adding user macros
+-- as global string variables to the lua state
 P = "mpleTest:"
 
 -- Link lengths in m

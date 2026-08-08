@@ -17,6 +17,7 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
         printf("\t%s\n", err);
         throw std::runtime_error("Error compiling script file: " + std::string(script_path));
     }
+    // TODO: add user macros as global string variables to the lua state
 }
 
 int LuaMpleAdapter::get_num_joints() const {
