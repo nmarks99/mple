@@ -9,7 +9,7 @@ class Mple:
         self.prefix = prefix
         self.ctxt = Context("pva")
         try:
-            self.ctxt.get(f"{prefix}Running", timeout=connection_timeout)
+            self.ctxt.get(f"{prefix}Status", timeout=connection_timeout)
         except TimeoutError:
             print("Timed out waiting to connect. Is an IOC with MPLE running?")
 

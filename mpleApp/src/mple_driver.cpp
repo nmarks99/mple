@@ -57,8 +57,6 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         collision_world_.add_from_json(obstacles_file);
     }
 
-
-    // TODO: remove separate rnning when confirmed this works
     namespace M = pvxs::members;
     status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
         M::Bool("running"),
@@ -78,13 +76,6 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     stop_pv_.open(stop_value_);
     pvxs::ioc::server().addPV(prefix + "Stop", stop_pv_);
 
-    // Bool to signal if mple is running a motion task
-    running_value_ = pvxs::nt::NTScalar{pvxs::TypeCode::Bool}.create();
-    running_value_["value"] = false;
-    running_pv_.open(running_value_);
-    pvxs::ioc::server().addPV(prefix + "Running", running_pv_);
-
-    // TODO: pv.open a value on these so clients can see them
     // Validate
     validate_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -171,8 +162,6 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
     printf("Running execution thread\n");
     std::thread exec_thread([req = std::move(request.value()), this]() {
-        running_value_["value"] = true;
-        running_pv_.post(running_value_);
 
         bool ok = false;
         unsigned int count = 0;
@@ -206,9 +195,6 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         status_value_["running"] = false;
         status_value_["iter"] = 0;
         status_pv_.post(status_value_);
-
-        running_value_["value"] = false;
-        running_pv_.post(running_value_);
     });
     exec_thread.detach();
 

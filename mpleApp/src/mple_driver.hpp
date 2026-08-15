@@ -21,8 +21,8 @@ class MpleDriver {
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
-    pvxs::Value running_value_;
-    pvxs::server::SharedPV running_pv_ = pvxs::server::SharedPV::buildReadonly();
+    // pvxs::Value running_value_;
+    // pvxs::server::SharedPV running_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     pvxs::Value stop_value_;
     std::atomic<bool> should_stop_ = false;
