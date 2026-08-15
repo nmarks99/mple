@@ -62,8 +62,8 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     namespace M = pvxs::members;
     status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
         M::Bool("running"),
-        M::Int32("iter"),
-        M::Int32("max")
+        M::UInt32("iter"),
+        M::UInt32("max")
     }).create();
     status_pv_.open(status_value_);
     pvxs::ioc::server().addPV(prefix + "Status", status_pv_);
@@ -112,7 +112,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
 void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
+    printf("Stop callback called!\n");
+    // Stops the current motion but we must also stop the execute
+    // callback thread from commanding further motion
     adapter_->stop();
+
+    // TODO: Stop the execute callback thread from commanding further motion
+    // - Set flag should_stop_ = true, where should_stop_ is atomic<bool>
+    should_stop_ = true;
     op->reply();
 }
 
@@ -176,8 +183,14 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
         for (auto& wp : req.joint_waypoints) {
             // wait for current motion to finish
+            // TODO: timeout
             while (adapter_->moving()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+
+            if (should_stop_) {
+                should_stop_ = false;
+                break;
             }
 
             ok = adapter_->move(wp, req.speed, req.acceleration);

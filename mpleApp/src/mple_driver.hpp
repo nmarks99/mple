@@ -25,6 +25,7 @@ class MpleDriver {
     pvxs::server::SharedPV running_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     pvxs::Value stop_value_;
+    std::atomic<bool> should_stop_ = false;
     pvxs::server::SharedPV stop_pv_ = pvxs::server::SharedPV::buildMailbox();
 
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
