@@ -11,7 +11,7 @@ class MpleAdapter {
     // virtual ? get_joint_limits() const = 0;
 
     /// \brief Gets the number of joints in the system
-    virtual int get_num_joints() const = 0;
+    virtual unsigned int get_num_joints() const = 0;
 
     /// \brief Gets the current joint positions
     /// \return vector of joint positions

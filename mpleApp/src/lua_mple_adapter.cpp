@@ -20,7 +20,7 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
     // TODO: add user macros as global string variables to the lua state
 }
 
-int LuaMpleAdapter::get_num_joints() const {
+unsigned int LuaMpleAdapter::get_num_joints() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto value = call_lua_method<int>("get_num_joints");
     return value.value_or(0);

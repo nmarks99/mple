@@ -32,6 +32,7 @@ class MpleDriver {
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV ik_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::server::SharedPV fk_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     struct ValidateRequest {
         ValidateRequest(pvxs::Value& value, int njoints)
@@ -171,6 +172,66 @@ class MpleDriver {
         }
     };
 
+    struct FKRequest {
+      public:
+        FKRequest(pvxs::Value& value, unsigned int num_joints)
+            : joints_flat(value["joints"].as<pvxs::shared_array<const double>>()) {
+
+                if (joints_flat.size() % num_joints != 0) {
+                    printf("joints is not reshapeble to vectors of length %d (the number of joints)\n", num_joints);
+                    request_valid_ = false;
+                    return;
+                }
+
+                // reshape to 2d vector
+                joints.reserve(joints_flat.size() / num_joints);
+                for (size_t i = 0; i < joints_flat.size(); i += num_joints) {
+                    joints.emplace_back(joints_flat.begin() + i,
+                                                 joints_flat.begin() + i + num_joints);
+                }
+        }
+
+        pvxs::shared_array<const double> joints_flat = {};
+        std::vector<std::vector<double>> joints = {};
+
+        static std::optional<FKRequest> build(pvxs::Value& value, unsigned int num_joints) {
+            try {
+                auto fk_req = FKRequest(value, num_joints);
+                if (fk_req.request_valid_) {
+                    return fk_req;
+                } else {
+                    return std::nullopt;
+                }
+            } catch (...) {
+            }
+            return std::nullopt;
+        }
+
+      private:
+        bool request_valid_ = true;
+    };
+
+    struct FKResponse {
+        bool valid = false;
+        std::string description = "";
+        pvxs::shared_array<double> poses_flat = {};
+
+        pvxs::TypeDef response() {
+            return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+                pvxs::members::Bool("valid"),
+                pvxs::members::String("description"),
+                pvxs::members::Float64A("poses"),
+            });
+        }
+
+        pvxs::Value to_value() {
+            auto value = response().create();
+            value["valid"] = valid;
+            value["description"] = description;
+            value["poses"] = poses_flat.freeze();
+            return value;
+        }
+    };
 
     struct IKRequest {
       public:
@@ -246,5 +307,8 @@ class MpleDriver {
                           pvxs::Value&& request_value);
 
     void ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value);
+
+    void fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value);
 };

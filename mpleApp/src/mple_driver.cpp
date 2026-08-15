@@ -92,6 +92,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
+    // Forward Kinematics
+    fk_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        fk_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "ComputeFK", fk_pv_);
+
     // Inverse Kinematics
     ik_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -112,6 +120,41 @@ void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     // - Set flag should_stop_ = true, where should_stop_ is atomic<bool>
     should_stop_ = true;
     op->reply();
+}
+
+void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+    FKResponse response;
+    auto request = FKRequest::build(request_value, adapter_->get_num_joints());
+
+    if (!request) {
+        printf("Failed to build FKRequest\n");
+        response.valid = false;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
+    }
+
+    response.poses_flat.resize(request->joints.size() * 6);
+    size_t ind = 0;
+    for (auto& wp : request->joints) {
+        auto joints = adapter_->fk(wp);
+        if (!joints) {
+            response.valid = false;
+            auto wp_string = vector_to_string(wp);
+            response.description = "Forward kinematics failed for joint angles " + vector_to_string(wp).value_or("(?)");
+            op->reply(response.to_value());
+            return;
+        }
+        for (const auto& j : *joints) {
+            response.poses_flat[ind] = j;
+            ind += 1;
+        }
+    }
+
+    response.valid = true;
+    response.description = "Okay";
+    op->reply(response.to_value());
 }
 
 void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

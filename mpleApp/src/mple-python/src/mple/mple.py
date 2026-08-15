@@ -51,6 +51,17 @@ class Mple:
         else:
             print("Validation failed. Aborting.")
 
+    def compute_fk(self, joints):
+        ValidateMsg = Value(Type([
+            ('joints', 'ad'),
+        ]), {
+            'joints': joints,
+        })
+
+        result = self.ctxt.rpc(f"{self.prefix}ComputeFK", ValidateMsg)
+        #  print(f"Valid: {result['valid']}")
+        #  print(f"Description: {result['description']}")
+        return result
 
     def compute_ik(self, poses):
         ValidateMsg = Value(Type([
