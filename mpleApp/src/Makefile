@@ -18,15 +18,20 @@ mpleSupport_DBD += mple.dbd
 INC += mple_adapter.hpp
 INC += mple_adapter_registry.hpp
 
+# Eigen
+USR_INCLUDES += -I$(TOP)/deps/eigen
+USR_INCLUDES += -I$(TOP)/deps/json/single_include
+
+# ompl
+USR_INCLUDES += -I$(OMPL)/include/ompl-2.0
+ompl_DIR = $(OMPL)/lib64
+
 # Libraries needed for mple
+mple_LIBS += ompl
 mple_LIBS += asyn
 mple_LIBS += lua
 mple_LIBS += pvxs
 mple_LIBS += $(EPICS_BASE_IOC_LIBS)
-
-# Eigen
-USR_INCLUDES += -I$(TOP)/deps/eigen
-USR_INCLUDES += -I$(TOP)/deps/json/single_include
 
 # source files to be compiled and added to the library
 mple_SRCS += mple_driver.cpp

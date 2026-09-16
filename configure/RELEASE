@@ -10,6 +10,8 @@ ASYN =
 LUA =
 PVXS =
 
+OMPL=
+
 # These lines allow developers to override these RELEASE settings
 # without having to modify this file directly.
 -include $(TOP)/../RELEASE.local

@@ -6,6 +6,15 @@
 #include "iocsh.h"
 #include "epicsExport.h"
 
+#include <ompl/base/ScopedState.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/base/spaces/SO2StateSpace.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+
+namespace ob = ompl::base;
+namespace og = ompl::geometric;
+
 template <typename T>
 std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
 
@@ -56,6 +65,9 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
         collision_world_.add_from_json(obstacles_file);
     }
+
+    auto space = std::make_shared<ob::CompoundStateSpace>();
+    std::cout << "subspace count = " << space->getSubspaceCount() << std::endl;
 
     namespace M = pvxs::members;
     status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
