@@ -45,11 +45,27 @@ class Mple:
         #  print(f"Description: {result["description"]}")
 
 
-    def validate_and_execute(self,joint_waypoints):
+    def validate_and_execute(self, joint_waypoints):
         if (self.validate(joint_waypoints)["valid"]):
             self.execute(joint_waypoints)
         else:
             print("Validation failed. Aborting.")
+
+    def plan(self, start, goal, num_points=0):
+        PlanMsg = Value(Type([
+            ('start', 'ad'),
+            ('goal', 'ad'),
+            ('num_points', 'i'),
+        ]), {
+            'start': start,
+            'goal': goal,
+            'num_points': num_points,
+        })
+
+        result = self.ctxt.rpc(f"{self.prefix}Plan", PlanMsg)
+        #  print(f"Valid: {result['valid']}")
+        #  print(f"Description: {result['description']}")
+        return result
 
     def compute_fk(self, joints):
         ValidateMsg = Value(Type([

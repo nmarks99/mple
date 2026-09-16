@@ -66,9 +66,6 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         collision_world_.add_from_json(obstacles_file);
     }
 
-    auto space = std::make_shared<ob::CompoundStateSpace>();
-    std::cout << "subspace count = " << space->getSubspaceCount() << std::endl;
-
     namespace M = pvxs::members;
     status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
         M::Bool("running"),
@@ -104,6 +101,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
+    // Plan
+    plan_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        plan_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "Plan", plan_pv_);
+
     // Forward Kinematics
     fk_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -132,6 +137,88 @@ void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     // - Set flag should_stop_ = true, where should_stop_ is atomic<bool>
     should_stop_ = true;
     op->reply();
+}
+void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+
+    PlanResponse response;
+    const auto njoints = adapter_->get_num_joints();
+    auto request = PlanRequest::build(request_value, adapter_->get_num_joints());
+
+    if (!request) {
+        printf("Failed to build PlanRequest\n");
+        response.valid = false;
+        response.description = "Invalid request";
+        op->reply(response.to_value());
+        return;
+    }
+
+    // Create the configuration space
+    auto space = std::make_shared<ob::CompoundStateSpace>();
+    space->addSubspace(std::make_shared<ob::SO2StateSpace>(), 1.0);
+    space->addSubspace(std::make_shared<ob::SO2StateSpace>(), 1.0);
+
+    // Set up geometric planner with SimpleSetup and RRTConnect planner
+    og::SimpleSetup setup(space);
+    setup.setStateValidityChecker([](const ob::State *) { return true; });
+    setup.setPlanner(std::make_shared<og::RRTConnect>(setup.getSpaceInformation()));
+
+    // Set start and goal states
+    ob::ScopedState<> start(space);
+    ob::ScopedState<> goal(space);
+    auto *startState = start->as<ob::CompoundStateSpace::StateType>();
+    auto *goalState = goal->as<ob::CompoundStateSpace::StateType>();
+    startState->as<ob::SO2StateSpace::StateType>(0)->value = request->start[0];
+    startState->as<ob::SO2StateSpace::StateType>(1)->value = request->start[1];
+    goalState->as<ob::SO2StateSpace::StateType>(0)->value = request->goal[0];
+    goalState->as<ob::SO2StateSpace::StateType>(1)->value = request->goal[1];
+    space->enforceBounds(goal.get());
+    setup.setStartAndGoalStates(start, goal, 1e-9);
+
+    // Solve
+    const ob::PlannerStatus status = setup.solve(1.0);
+    if (status != ob::PlannerStatus::EXACT_SOLUTION) {
+        response.valid = false;
+        response.description = std::string("Failed to find an exact path: " + status.asString());
+        op->reply(response.to_value());
+        return;
+    }
+
+    setup.simplifySolution();
+    og::PathGeometric &path = setup.getSolutionPath();
+    if (!path.check()) {
+        response.valid = false;
+        response.description = std::string("OMPL returned an invalid path");
+        op->reply(response.to_value());
+        return;
+    }
+
+
+    const unsigned int total_points = request->num_points + 2;
+    response.trajectory_flat.resize(total_points*adapter_->get_num_joints());
+    path.interpolate(total_points);
+
+    constexpr double two_pi = 6.28318530717958647692;
+    double previousQ1 = 0.0;
+    double previousQ2 = 0.0;
+    std::cout << std::fixed << std::setprecision(6);
+    for (std::size_t i = 0; i < path.getStateCount(); ++i)
+    {
+        const auto *state = path.getState(i)->as<ob::CompoundStateSpace::StateType>();
+        const double wrappedQ1 = state->as<ob::SO2StateSpace::StateType>(0)->value;
+        const double wrappedQ2 = state->as<ob::SO2StateSpace::StateType>(1)->value;
+        const double q1 = previousQ1 + std::remainder(wrappedQ1 - previousQ1, two_pi);
+        const double q2 = previousQ2 + std::remainder(wrappedQ2 - previousQ2, two_pi);
+        std::cout << q1 << ',' << q2 << '\n';
+        response.trajectory_flat.at(i * njoints) = q1;
+        response.trajectory_flat.at(i * njoints + 1) = q2;
+        previousQ1 = q1;
+        previousQ2 = q2;
+    }
+
+    response.valid = true;
+    response.description = "Success";
+    op->reply(response.to_value());
 }
 
 void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

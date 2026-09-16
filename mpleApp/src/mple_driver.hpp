@@ -172,6 +172,90 @@ class MpleDriver {
         }
     };
 
+
+
+
+
+
+
+
+
+    struct PlanRequest {
+      public:
+        PlanRequest(pvxs::Value& value, unsigned int num_joints):
+            start(value["start"].as<pvxs::shared_array<const double>>()),
+            goal(value["goal"].as<pvxs::shared_array<const double>>()),
+            num_points(value["num_points"].as<unsigned int>())
+        {
+                const size_t start_size = start.size();
+                const size_t goal_size = goal.size();
+                if ((start_size != goal_size) || start_size != num_joints) {
+                    printf("start and goal must both be equal to number of joints: %d\n", num_joints);
+                    request_valid_ = false;
+                    return;
+                }
+        }
+
+        pvxs::shared_array<const double> start = {};
+        pvxs::shared_array<const double> goal = {};
+        unsigned int num_points = 0;
+
+        static std::optional<PlanRequest> build(pvxs::Value& value, unsigned int num_joints) {
+            try {
+                auto plan_req = PlanRequest(value, num_joints);
+                if (plan_req.request_valid_) {
+                    return plan_req;
+                } else {
+                    return std::nullopt;
+                }
+            } catch (...) {
+            }
+            return std::nullopt;
+        }
+
+      private:
+        bool request_valid_ = true;
+    };
+
+    struct PlanResponse {
+        bool valid = false;
+        std::string description = "";
+        pvxs::shared_array<double> trajectory_flat = {};
+
+        pvxs::TypeDef response() {
+            return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+                pvxs::members::Bool("valid"),
+                pvxs::members::String("description"),
+                pvxs::members::Float64A("trajectory"),
+            });
+        }
+
+        pvxs::Value to_value() {
+            auto value = response().create();
+            value["valid"] = valid;
+            value["description"] = description;
+            value["trajectory"] = trajectory_flat.freeze();
+            return value;
+        }
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     struct FKRequest {
       public:
         FKRequest(pvxs::Value& value, unsigned int num_joints)
