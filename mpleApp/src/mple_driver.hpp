@@ -173,27 +173,24 @@ class MpleDriver {
     };
 
 
-
-
-
-
-
-
-
     struct PlanRequest {
       public:
         PlanRequest(pvxs::Value& value, unsigned int num_joints):
             start(value["start"].as<pvxs::shared_array<const double>>()),
             goal(value["goal"].as<pvxs::shared_array<const double>>()),
-            num_points(value["num_points"].as<unsigned int>())
-        {
-                const size_t start_size = start.size();
-                const size_t goal_size = goal.size();
-                if ((start_size != goal_size) || start_size != num_joints) {
-                    printf("start and goal must both be equal to number of joints: %d\n", num_joints);
-                    request_valid_ = false;
-                    return;
-                }
+            num_points(value["num_points"].as<unsigned int>()) {
+            const size_t start_size = start.size();
+            const size_t goal_size = goal.size();
+            if (goal_size != num_joints) {
+                printf("Goal state must both be equal to number of joints: %d\n", num_joints);
+                request_valid_ = false;
+                return;
+            }
+            if (start_size != 0 && start_size != goal_size) {
+                printf("start and goal must both be equal to number of joints: %d\n", num_joints);
+                request_valid_ = false;
+                return;
+            }
         }
 
         pvxs::shared_array<const double> start = {};
@@ -238,22 +235,6 @@ class MpleDriver {
             return value;
         }
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     struct FKRequest {

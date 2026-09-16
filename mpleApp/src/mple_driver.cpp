@@ -164,14 +164,19 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     setup.setPlanner(std::make_shared<og::RRTConnect>(setup.getSpaceInformation()));
 
     // Set start and goal states
+    std::vector<double> req_start(request->start.begin(), request->start.end());
+    if (req_start.size() == 0) {
+        std::cout << "No starting state provided, using current state as start\n";
+        req_start = adapter_->get_joint_positions();
+    }
     ob::ScopedState<> start(space);
     ob::ScopedState<> goal(space);
-    auto *startState = start->as<ob::CompoundStateSpace::StateType>();
-    auto *goalState = goal->as<ob::CompoundStateSpace::StateType>();
-    startState->as<ob::SO2StateSpace::StateType>(0)->value = request->start[0];
-    startState->as<ob::SO2StateSpace::StateType>(1)->value = request->start[1];
-    goalState->as<ob::SO2StateSpace::StateType>(0)->value = request->goal[0];
-    goalState->as<ob::SO2StateSpace::StateType>(1)->value = request->goal[1];
+    auto *start_state = start->as<ob::CompoundStateSpace::StateType>();
+    auto *goal_state = goal->as<ob::CompoundStateSpace::StateType>();
+    start_state->as<ob::SO2StateSpace::StateType>(0)->value = req_start[0];
+    start_state->as<ob::SO2StateSpace::StateType>(1)->value = req_start[1];
+    goal_state->as<ob::SO2StateSpace::StateType>(0)->value = request->goal[0];
+    goal_state->as<ob::SO2StateSpace::StateType>(1)->value = request->goal[1];
     space->enforceBounds(goal.get());
     setup.setStartAndGoalStates(start, goal, 1e-9);
 
@@ -193,9 +198,8 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-
     const unsigned int total_points = request->num_points + 2;
-    response.trajectory_flat.resize(total_points*adapter_->get_num_joints());
+    response.trajectory_flat.resize(total_points * njoints);
     path.interpolate(total_points);
 
     constexpr double two_pi = 6.28318530717958647692;
@@ -209,7 +213,6 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         const double wrappedQ2 = state->as<ob::SO2StateSpace::StateType>(1)->value;
         const double q1 = previousQ1 + std::remainder(wrappedQ1 - previousQ1, two_pi);
         const double q2 = previousQ2 + std::remainder(wrappedQ2 - previousQ2, two_pi);
-        std::cout << q1 << ',' << q2 << '\n';
         response.trajectory_flat.at(i * njoints) = q1;
         response.trajectory_flat.at(i * njoints + 1) = q2;
         previousQ1 = q1;

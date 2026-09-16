@@ -51,7 +51,7 @@ class Mple:
         else:
             print("Validation failed. Aborting.")
 
-    def plan(self, start, goal, num_points=0):
+    def plan(self, goal, start=[], num_points=0):
         PlanMsg = Value(Type([
             ('start', 'ad'),
             ('goal', 'ad'),
