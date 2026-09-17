@@ -8,7 +8,7 @@ epicsEnvSet("IOCSH_PS1", "$(IOC)>")
 epicsEnvSet("PREFIX", "mpleTest:")
 
 # Simulated planar RR robot arm
-luaLoadFile("rr_robot.lua", "P=$(PREFIX),STATE=LUASTATE0")
+luaRunFile("rr_robot.lua", "P=$(PREFIX),STATE=LUASTATE0")
 
 # Load the adapter for our robot and create a mple instance
 LuaMpleAdapterConfig("rr_robot", "rr_robot_adapter.lua")

@@ -8,7 +8,7 @@ local iocsh = require("iocsh")
 P = P
 STATE = STATE
 
-luaRegisterState(STATE)
+luaNameState(STATE)
 
 -- Robot had 2 revolute joints
 NUM_JOINTS = 2
