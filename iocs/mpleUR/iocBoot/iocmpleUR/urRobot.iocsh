@@ -1,0 +1,21 @@
+# UR Dashboard server
+URDashboardConfig("dash", "$(IP)", "0.1")
+dbLoadRecords("$(URROBOT)/db/dashboard.db", "P=$(PREFIX), PORT=dash")
+
+# UR RTDE Receive interface
+RTDEReceiveConfig("rtde_recv", "$(IP)", "0.02")
+dbLoadRecords("$(URROBOT)/db/rtde_receive.db", "P=$(PREFIX), PORT=rtde_recv")
+
+# UR RTDE I/O interface
+RTDEInOutConfig("rtde_io", "$(IP)", "0.1")
+dbLoadRecords("$(URROBOT)/db/rtde_io.db", "P=$(PREFIX), PORT=rtde_io")
+
+# UR RTDE Control interface
+RTDEControlConfig("rtde_ctrl", "dash", "rtde_recv", "0.02", "1")
+dbLoadRecords("$(URROBOT)/db/rtde_control.db", "P=$(PREFIX), PORT=rtde_ctrl")
+
+# # Set up Robotiq Gripper
+# # Optionally can specify MIN_POS and MAX_POS which define the closed/open positions
+# # and AUTO_ACTIVATE (YES/NO) which will activate the gripper if the robot is on after IOC init
+# URGripperConfig("gripper", "dash", "0.02")
+# dbLoadRecords("$(URROBOT)/db/robotiq_gripper.db", "P=$(PREFIX), AUTO_ACTIVATE=YES, PORT=gripper")

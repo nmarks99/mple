@@ -2,6 +2,7 @@ TOP = ..
 include $(TOP)/configure/CONFIG
 
 DIRS += mpleTest
+DIRS += mpleUR
 
 include $(TOP)/configure/RULES_TOP
 
