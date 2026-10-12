@@ -49,6 +49,11 @@ TESTPROD += testJson
 testJson_SRCS += test_json.cpp
 testJson_SRCS += collisions.cpp
 
+TESTPROD += testTrajectory
+testTrajectory_SRCS += test_trajectory.cpp
+testTrajectory_LIBS += Com
+TESTS += testTrajectory
+
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
