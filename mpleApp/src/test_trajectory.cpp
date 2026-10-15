@@ -2,22 +2,51 @@
 #include <epicsThread.h>
 #include <epicsUnitTest.h>
 #include <testMain.h>
+#include <cmath>
 
 #include <trajectory.hpp>
 
-MAIN(testTrajectory) {
-    testPlan(2);
+constexpr bool equal(double a, double b, double tol=1e-9) {
+    if (std::fabs(a - b) < tol) {
+        return true;
+    }
+    return false;
+}
 
-    std::vector<double> q0 = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    std::vector<double> q1 = {0.0, 1.57, 0.7, 0.7, 0.0, 0.0};
-    TrajectoryParams params = {
-        .max_speed = 5.0,
-        .max_accel = 10.0,
-        .dt = 0.002
-    };
-    auto traj = joint_trajectory(q0, q1, params);
-    testDiag("Size = (%ld, %ld)\n", traj.size(), traj[0].size());
-    testOk1(traj.size() == 478);
-    testOk1(traj[0].size() == 6);
+void print_vector(const std::vector<double>& vec) {
+    for (size_t i = 0; i < vec.size(); i++) {
+        if (i == vec.size()-1) {
+            printf("%.12lf\n", vec[i]);
+        } else {
+            printf("%.12lf,", vec[i]);
+        }
+    }
+}
+
+MAIN(testTrajectory) {
+    testPlan(0);
+
+    GeometricPath path({
+        {0.0, 1.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, 3.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, 6.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, 10.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, 15.0, 0.0, 0.0, 0.0, 0.0}
+    });
+    testOk1(static_cast<int>(path.length()) == 14);
+
+    auto q = path.sample(5.2);
+    testOk1(equal(q[1], 6.2));
+
+    const double vmax = 1.0;
+    const double amax = 99999.0;
+    const double dt = 0.002;
+    auto traj = create_trajectory(path, vmax, amax, dt);
+    testDiag("traj.size() = %ld\n", traj.size());
+
+    for (const auto& q : traj) {
+        print_vector(q);
+    }
+
     return testDone();
 }
