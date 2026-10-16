@@ -13,16 +13,6 @@ constexpr bool equal(double a, double b, double tol=1e-9) {
     return false;
 }
 
-void print_vector(const std::vector<double>& vec) {
-    for (size_t i = 0; i < vec.size(); i++) {
-        if (i == vec.size()-1) {
-            printf("%.12lf\n", vec[i]);
-        } else {
-            printf("%.12lf,", vec[i]);
-        }
-    }
-}
-
 MAIN(testTrajectory) {
     testPlan(0);
 
@@ -42,11 +32,6 @@ MAIN(testTrajectory) {
     const double amax = 99999.0;
     const double dt = 0.002;
     auto traj = create_trajectory(path, vmax, amax, dt);
-    testDiag("traj.size() = %ld\n", traj.size());
-
-    for (const auto& q : traj) {
-        print_vector(q);
-    }
 
     return testDone();
 }

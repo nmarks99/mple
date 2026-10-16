@@ -7,11 +7,13 @@
 class GeometricPath {
   public:
     GeometricPath(std::vector<std::vector<double>> waypoints) : waypoints_(waypoints) {
+        assert(waypoints_.size() >= 2);
+        q_size_ = waypoints[0].size();
+
         d_cumulative_.push_back(0.0);
         for (size_t i = 0; i < waypoints.size() - 1; i++) {
-            // TODO: don't hardcode 6
-            Eigen::Vector<double, 6> v1(waypoints[i].data());
-            Eigen::Vector<double, 6> v2(waypoints[i + 1].data());
+            Eigen::Map<const Eigen::VectorXd> v1(waypoints[i].data(), q_size_);
+            Eigen::Map<const Eigen::VectorXd> v2(waypoints[i + 1].data(), q_size_);
             auto d = (v2 - v1).norm();
             d_segments_.push_back(d);
             d_cumulative_.push_back(d + d_cumulative_.back());
@@ -23,8 +25,10 @@ class GeometricPath {
 
     std::vector<double> sample(double x) const {
         // Handle boundary conditions explicitly
-        if (x <= 0.0) return waypoints_.front();
-        if (x >= length_) return waypoints_.back();
+        if (x <= 0.0)
+            return waypoints_.front();
+        if (x >= length_)
+            return waypoints_.back();
 
         std::vector<double> q_out(6);
 
@@ -32,12 +36,12 @@ class GeometricPath {
         auto it = std::upper_bound(d_cumulative_.begin(), d_cumulative_.end(), x);
         size_t index_high = std::distance(d_cumulative_.begin(), it);
         size_t index_low = index_high - 1;
-        auto q0 = waypoints_[index_low];
-        auto q1 = waypoints_[index_high];
+        auto q0 = waypoints_.at(index_low);
+        auto q1 = waypoints_.at(index_high);
 
         // Prevent possible division by zero
-        const double dseg = d_segments_[index_low];
-        const double dcum = d_cumulative_[index_low];
+        const double dseg = d_segments_.at(index_low);
+        const double dcum = d_cumulative_.at(index_low);
         if (dseg == 0.0) {
             // indentical consecutive waypoints. Return either one:
             return q0;
@@ -53,14 +57,15 @@ class GeometricPath {
     }
 
   private:
+    size_t q_size_;
     double length_ = 0.0;
     std::vector<std::vector<double>> waypoints_;
     std::vector<double> d_segments_;
     std::vector<double> d_cumulative_;
 };
 
-inline std::vector<std::vector<double>>
-create_trajectory(const GeometricPath& path, double vmax, double amax, double dt) {
+inline std::vector<std::vector<double>> create_trajectory(const GeometricPath& path, double vmax, double amax,
+                                                          double dt) {
 
     std::vector<std::vector<double>> traj;
 
