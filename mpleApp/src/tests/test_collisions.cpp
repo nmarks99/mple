@@ -1,28 +1,14 @@
+#include <epicsUnitTest.h>
+#include <testMain.h>
+
 #include "collisions.hpp"
-#include <iostream>
-#include <cmath>
 
-int main(int argc, char* argv[]) {
+MAIN(testCollisions) {
+    testPlan(2);
 
-    if (argc != 4) {
-        std::cout << "not enough inputs\n";
-        return EXIT_FAILURE;
-    }
-
-    Position point;
-    try {
-        point = {
-            std::stod(argv[1]),
-            std::stod(argv[2]),
-            std::stod(argv[3]),
-        };
-    } catch (...) {
-        std::cout << "invalid input\n";
-        return EXIT_FAILURE;
-    }
+    Position point(-2, 2 ,0);
 
     CollisionWorld world;
-
     world.add_object(CollisionObject {
         "box1",
         Pose { {1, 2, 0}, {0, 0, 0} },
@@ -45,11 +31,61 @@ int main(int argc, char* argv[]) {
     });
 
     auto collision = world.check_point(point);
-    if (collision) {
-        std::cout << "Hit " << *collision << std::endl;
-    } else {
-        std::cout << "Miss" << std::endl;
-    }
+    testOk1(collision.has_value());
+    testOk1(*collision == "sphere1");
 
-    return EXIT_SUCCESS;
+    return testDone();
 }
+
+
+// int main(int argc, char* argv[]) {
+//
+    // if (argc != 4) {
+        // std::cout << "not enough inputs\n";
+        // return EXIT_FAILURE;
+    // }
+//
+    // Position point;
+    // try {
+        // point = {
+            // std::stod(argv[1]),
+            // std::stod(argv[2]),
+            // std::stod(argv[3]),
+        // };
+    // } catch (...) {
+        // std::cout << "invalid input\n";
+        // return EXIT_FAILURE;
+    // }
+//
+    // CollisionWorld world;
+//
+    // world.add_object(CollisionObject {
+        // "box1",
+        // Pose { {1, 2, 0}, {0, 0, 0} },
+        // { Box {2, 2, 2} },
+        // { Pose { {2, 1, 0}, {0, 0, M_PI/4.0} } }
+    // });
+//
+    // world.add_object(CollisionObject {
+        // "box2",
+        // Pose { {3, -2, 0}, {0, 0, 0} },
+        // { Box {2, 2, 2} },
+        // { Pose { {0, 0, 0}, {0, 0, 0} } }
+    // });
+//
+    // world.add_object(CollisionObject {
+        // "sphere1",
+        // Pose {{-2, 2, 0}, {0, 0, 0}},
+        // { Sphere {1} },
+        // { Pose { {0, 0, 0}, {0, 0, 0} } }
+    // });
+//
+    // auto collision = world.check_point(point);
+    // if (collision) {
+        // std::cout << "Hit " << *collision << std::endl;
+    // } else {
+        // std::cout << "Miss" << std::endl;
+    // }
+//
+    // return EXIT_SUCCESS;
+// }

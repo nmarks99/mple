@@ -8,6 +8,8 @@
 MAIN(testJson) {
     testPlan(5);
 
+    // hardcode a valid json file here instead of
+    // trying to load one from the filesystem for this test
     std::istringstream input(R"json(
 {
     "Ball1": {
