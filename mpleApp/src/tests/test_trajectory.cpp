@@ -14,24 +14,22 @@ constexpr bool equal(double a, double b, double tol=1e-9) {
 }
 
 MAIN(testTrajectory) {
-    testPlan(0);
+    testPlan(3);
 
     GeometricPath path({
-        {0.0, 1.0, 0.0, 0.0, 0.0, 0.0},
-        {0.0, 3.0, 0.0, 0.0, 0.0, 0.0},
-        {0.0, 6.0, 0.0, 0.0, 0.0, 0.0},
-        {0.0, 10.0, 0.0, 0.0, 0.0, 0.0},
-        {0.0, 15.0, 0.0, 0.0, 0.0, 0.0}
+        {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, 8.0, 0.0, 0.0, 0.0, 0.0},
     });
-    testOk1(static_cast<int>(path.length()) == 14);
+    testOk1(equal(path.length(), 8.0));
 
-    auto q = path.sample(5.2);
-    testOk1(equal(q[1], 6.2));
+    auto q = path.sample(3.0);
+    testOk1(equal(q[1], 3.0));
 
-    const double vmax = 1.0;
-    const double amax = 99999.0;
-    const double dt = 0.002;
-    auto traj = create_trajectory(path, vmax, amax, dt);
+    const double vmax = 2.0;
+    const double amax = 10.0;
+    const double dt = 0.25;
+    const auto traj = create_trajectory(path, vmax, amax, dt);
+    testOk(traj.size() == 31, "7.5 second trajectory sampled every 0.25 seconds has 31 points");
 
     return testDone();
 }

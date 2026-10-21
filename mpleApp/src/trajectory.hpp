@@ -25,10 +25,12 @@ class GeometricPath {
 
     std::vector<double> sample(double x) const {
         // Handle boundary conditions explicitly
-        if (x <= 0.0)
+        if (x <= 0.0) {
             return waypoints_.front();
-        if (x >= length_)
+        }
+        if (x >= length_) {
             return waypoints_.back();
+        }
 
         std::vector<double> q_out(6);
 
