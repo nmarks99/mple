@@ -1,4 +1,5 @@
 #pragma once
+#include <istream>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -66,6 +67,7 @@ struct CollisionObject {
 };
 
 struct CollisionWorld {
+    static CollisionWorld from_json(std::istream& input);
     static CollisionWorld from_json(const std::string& file_path);
 
     // Adds an object to the world. If an object with the same name is already

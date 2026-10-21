@@ -48,19 +48,23 @@ CollisionObject CollisionObject::from_quicktype(const std::string& name, quickty
     };
 }
 
-CollisionWorld CollisionWorld::from_json(const std::string& file_path) {
+CollisionWorld CollisionWorld::from_json(std::istream& input) {
     using json = nlohmann::json;
-    std::ifstream file(file_path);
-    if (!file) {
-        throw std::invalid_argument("Invalid file path provided " + file_path);
-    }
     CollisionWorld world{};
-    quicktype::Obstacles obstacles = json::parse(file);
+    quicktype::Obstacles obstacles = json::parse(input);
     for (auto& ob : obstacles) {
         auto coll_obj = CollisionObject::from_quicktype(ob.first, ob.second);
         world.add_object(coll_obj);
     }
     return world;
+}
+
+CollisionWorld CollisionWorld::from_json(const std::string& file_path) {
+    std::ifstream file(file_path);
+    if (!file) {
+        throw std::invalid_argument("Invalid file path provided " + file_path);
+    }
+    return from_json(file);
 }
 
 void CollisionWorld::add_from_json(const std::string& file_path) {

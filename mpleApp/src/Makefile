@@ -16,6 +16,7 @@ mpleSupport_DBD += mple.dbd
 
 # headers to install
 INC += mple_adapter.hpp
+INC += trajectory.hpp
 INC += mple_adapter_registry.hpp
 
 # Eigen
@@ -38,21 +39,6 @@ mple_SRCS += mple_driver.cpp
 mple_SRCS += collisions.cpp
 mple_SRCS += lua_mple_adapter.cpp
 mple_SRCS += mple_adapter_registry.cpp
-
-# Testing collisions
-TESTPROD += testCollision
-testCollision_SRCS += test_collisions.cpp
-testCollision_SRCS += collisions.cpp
-
-# Testing json
-TESTPROD += testJson
-testJson_SRCS += test_json.cpp
-testJson_SRCS += collisions.cpp
-
-TESTPROD += testTrajectory
-testTrajectory_SRCS += test_trajectory.cpp
-testTrajectory_LIBS += Com
-TESTS += testTrajectory
 
 include $(TOP)/configure/RULES
 #----------------------------------------
