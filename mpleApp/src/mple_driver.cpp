@@ -315,6 +315,11 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         status_value_["max"] = req.joint_waypoints.size();
         status_pv_.post(status_value_);
 
+        //////////////////////////////////////////////////////////////////////////////////////
+        // TODO: Replace this with TOPP-RA, which should be able to give us trajectory_flat
+        // Need adapter_->get_robot_info or similar which tell us about joint limits,
+        // controller servo loop timestep, and other info we might need
+
         GeometricPath path(req.joint_waypoints);
         const auto trajectory = create_trajectory(path, req.speed, req.acceleration, timestep);
 
@@ -323,6 +328,7 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         for (const auto& sample : trajectory) {
             trajectory_flat.insert(trajectory_flat.end(), sample.begin(), sample.end());
         }
+        //////////////////////////////////////////////////////////////////////////////////////
 
         if (adapter_->move(trajectory_flat)) {
             while (adapter_->moving()) {
