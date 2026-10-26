@@ -32,7 +32,7 @@ class GeometricPath {
             return waypoints_.back();
         }
 
-        std::vector<double> q_out(6);
+        std::vector<double> q_out(q_size_);
 
         // Find the two waypoints which enclose the given x
         auto it = std::upper_bound(d_cumulative_.begin(), d_cumulative_.end(), x);

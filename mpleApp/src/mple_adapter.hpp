@@ -27,10 +27,10 @@ class MpleAdapter {
     /// \brief Tells if the system is currenty in motion or not
     virtual bool moving() const = 0;
 
-    /// \brief Moves the system to the provided joint position.
-    /// \param speed The joints speeds.
-    /// \param accel The joint accelerations.
-    virtual bool move(const std::vector<double>& waypoint, double speed, double accel) const = 0;
+    /// \brief Starts execution of a time-scaled joint trajectory.
+    /// \param trajectory Flat, sample-major vector of joint positions.
+    /// \return True when the trajectory was accepted for execution.
+    virtual bool move(const std::vector<double>& trajectory) const = 0;
 
     /// \brief Computes forward kinematics for the system
     ///
@@ -52,7 +52,7 @@ class MpleAdapter {
     /// however if they do not and choose to call it directly, this method must know how to compute
     /// IK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const {
-        if (tcp_pose.size() != static_cast<size_t>(6)) {
+        if (tcp_pose.size() != static_cast<size_t>(get_num_joints())) {
             return std::nullopt;
         }
         return std::nullopt;

@@ -2,6 +2,7 @@
 #include <charconv>
 #include <optional>
 #include "mple_driver.hpp"
+#include "trajectory.hpp"
 
 #include "iocsh.h"
 #include "epicsExport.h"
@@ -307,34 +308,28 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
     printf("Running execution thread\n");
     std::thread exec_thread([req = std::move(request.value()), this]() {
-
-        bool ok = false;
-        unsigned int count = 0;
+        constexpr double timestep = 0.002;
 
         status_value_["running"] = true;
         status_value_["iter"] = 0;
         status_value_["max"] = req.joint_waypoints.size();
+        status_pv_.post(status_value_);
 
-        for (auto& wp : req.joint_waypoints) {
-            // wait for current motion to finish
-            // TODO: timeout
+        GeometricPath path(req.joint_waypoints);
+        const auto trajectory = create_trajectory(path, req.speed, req.acceleration, timestep);
+
+        std::vector<double> trajectory_flat;
+        trajectory_flat.reserve(trajectory.size() * req.num_joints);
+        for (const auto& sample : trajectory) {
+            trajectory_flat.insert(trajectory_flat.end(), sample.begin(), sample.end());
+        }
+
+        if (adapter_->move(trajectory_flat)) {
             while (adapter_->moving()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
-
-            if (should_stop_) {
-                should_stop_ = false;
-                break;
-            }
-
-            ok = adapter_->move(wp, req.speed, req.acceleration);
-            if (!ok) {
-                printf("adapter_->move returned error. Aborting motion\n");
-                break;
-            }
-            count++;
-            status_value_["iter"] = count;
-            status_pv_.post(status_value_);
+        } else {
+            printf("adapter_->move returned error. Aborting motion\n");
         }
 
         status_value_["running"] = false;
