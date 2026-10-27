@@ -122,13 +122,20 @@ class MpleDriver {
             : num_joints(njoints),
               joint_waypoints_flat(value["joint_waypoints"].as<pvxs::shared_array<const double>>()),
               speed(value["speed"].as<double>()), acceleration(value["acceleration"].as<double>()) {
-            // TODO: assert throwing here crashes the IOC???
-            assert(joint_waypoints_flat.size() > 0 && "joint_waypoints empty");
-            assert(joint_waypoints_flat.size() % num_joints == 0 &&
-                   "joint_waypoints does not match number of joints");
+
+            if (num_joints <= 0) {
+                throw std::invalid_argument("Number of axes must be > 0");
+            }
+            if (joint_waypoints_flat.size() < 2 * static_cast<size_t>(num_joints)) {
+                throw std::invalid_argument("At least two waypoints are required");
+            }
+            if (joint_waypoints_flat.size() % num_joints != 0) {
+                throw std::invalid_argument(
+                    "Waypoint data does not match the number of axes");
+            }
 
             // reshape to 2d vector
-            joint_waypoints.reserve(joint_waypoints_flat.size() / 2);
+            joint_waypoints.reserve(joint_waypoints_flat.size() / num_joints);
             for (size_t i = 0; i < joint_waypoints_flat.size(); i += num_joints) {
                 joint_waypoints.emplace_back(joint_waypoints_flat.begin() + i,
                                              joint_waypoints_flat.begin() + i + num_joints);

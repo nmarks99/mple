@@ -1,9 +1,35 @@
 #include "trajectory.hpp"
 
+#include <cmath>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+
+#include <toppra/algorithm/toppra.hpp>
+#include <toppra/constraint/linear_joint_acceleration.hpp>
+#include <toppra/constraint/linear_joint_velocity.hpp>
+#include <toppra/geometric_path/piecewise_poly_path.hpp>
+#include <toppra/parametrizer/const_accel.hpp>
+#include <toppra/solver/seidel.hpp>
+
 std::vector<double> build_trajectory(
-    const std::vector<std::vector<double>>& joint_states, int dof,
+    const std::vector<std::vector<double>>& joint_states, unsigned int num_axes,
     double max_velocity, double max_acceleration) {
 
+    if (num_axes == 0) {
+        throw std::invalid_argument("Number of axes must be greater than zero");
+    }
+    if (joint_states.size() < 2) {
+        throw std::invalid_argument("At least two waypoints are required");
+    }
+    if (!std::isfinite(max_velocity) || max_velocity <= 0.0) {
+        throw std::invalid_argument("Maximum velocity must be finite and positive");
+    }
+    if (!std::isfinite(max_acceleration) || max_acceleration <= 0.0) {
+        throw std::invalid_argument("Maximum acceleration must be finite and positive");
+    }
+
+    // TODO: choose this more intelligently
     constexpr double sample_period = 0.01;
 
     // Store waypoints from user in toppra::Vectors
@@ -17,14 +43,14 @@ std::vector<double> build_trajectory(
     toppra::Vector s_vec = toppra::Vector::LinSpaced(waypoints.size(), 0.0, waypoints.size() - 1);
 
     // Create the cubic spline describing joint positions along the geometric path
-    toppra::BoundaryCond natural{2, toppra::Vector::Zero(dof)};
+    toppra::BoundaryCond natural{2, toppra::Vector::Zero(num_axes)};
     auto path = std::make_shared<toppra::PiecewisePolyPath>(
         toppra::PiecewisePolyPath::CubicSpline(
             waypoints, s_vec, toppra::BoundaryCondFull{natural, natural}));
 
     // Set contraints for the velocity and acceleration
-    const toppra::Vector velocity_limit = toppra::Vector::Constant(dof, max_velocity);
-    const toppra::Vector acceleration_limit = toppra::Vector::Constant(dof, max_acceleration);
+    const toppra::Vector velocity_limit = toppra::Vector::Constant(num_axes, max_velocity);
+    const toppra::Vector acceleration_limit = toppra::Vector::Constant(num_axes, max_acceleration);
     toppra::LinearConstraintPtrs constraints{
         std::make_shared<toppra::constraint::LinearJointVelocity>(
             -velocity_limit, velocity_limit),
@@ -40,7 +66,7 @@ std::vector<double> build_trajectory(
         std::stringstream msg;
         msg << "TOPP-RA could not parameterize the path: "
                   << algorithm.getErrorMessage() << '\n';
-        throw std::invalid_argument(msg.str());
+        throw std::runtime_error(msg.str());
     }
 
     // Construct the time-domain trajectory q(t) from the parameterization.
@@ -64,5 +90,6 @@ std::vector<double> build_trajectory(
         }
     }
 
+    printf("trajectory_flat.size() = %ld", trajectory_flat.size());
     return trajectory_flat;
 }

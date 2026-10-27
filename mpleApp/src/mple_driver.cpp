@@ -306,28 +306,26 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    printf("Running execution thread\n");
     std::thread exec_thread([req = std::move(request.value()), this]() {
-        // constexpr double timestep = 0.002;
-
         status_value_["running"] = true;
         status_value_["iter"] = 0;
         status_value_["max"] = req.joint_waypoints.size();
         status_pv_.post(status_value_);
 
-        std::vector<double> trajectory_flat;
         try {
+            std::vector<double> trajectory_flat;
             trajectory_flat = build_trajectory(req.joint_waypoints, req.num_joints, req.speed, req.acceleration);
-        } catch (const std::exception& e) {
-            std::cout << e.what() << std::endl;
-        }
-
-        if (adapter_->move(trajectory_flat)) {
+            if (!adapter_->move(trajectory_flat)) {
+                throw std::runtime_error("Error in adapter::move");
+            }
+            // TODO: timeout
             while (adapter_->moving()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
-        } else {
-            printf("adapter_->move returned error. Aborting motion\n");
+        } catch (const std::exception& e) {
+            std::cerr << "Execution failed: " << e.what() << "\n";
+        } catch (...) {
+            std::cerr << "Execution failed with unknown error\n";
         }
 
         status_value_["running"] = false;

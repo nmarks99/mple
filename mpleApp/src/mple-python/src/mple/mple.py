@@ -26,22 +26,22 @@ class Mple:
         result = self.ctxt.rpc(f"{self.prefix}Validate", ValidateMsg)
         return result
 
-    def execute(self, joint_waypoints, velocity, acceleration):
+    def execute(self, joint_waypoints, speed, acceleration):
         ExecuteMsg = Value(Type([
             ('joint_waypoints', 'ad'),
             ('speed', 'd'),
             ('acceleration', 'd')
         ]), {
             'joint_waypoints': joint_waypoints,
-            'speed': velocity,
+            'speed': speed,
             'acceleration': acceleration,
         })
         result = self.ctxt.rpc(f"{self.prefix}Execute", ExecuteMsg)
         return result
 
-    def validate_and_execute(self, joint_waypoints, velocity, acceleration):
+    def validate_and_execute(self, joint_waypoints, speed, acceleration):
         if (self.validate(joint_waypoints)["valid"]):
-            self.execute(joint_waypoints, velocity, acceleration)
+            self.execute(joint_waypoints, speed, acceleration)
         else:
             print("Validation failed. Aborting.")
 
