@@ -2,7 +2,7 @@
 #include <charconv>
 #include <optional>
 #include "mple_driver.hpp"
-#include "trajectory.hpp"
+// #include "trajectory.hpp"
 
 #include "iocsh.h"
 #include "epicsExport.h"
@@ -12,6 +12,13 @@
 #include <ompl/base/spaces/SO2StateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
+
+// #include <toppra/algorithm/toppra.hpp>
+// #include <toppra/constraint/linear_joint_acceleration.hpp>
+// #include <toppra/constraint/linear_joint_velocity.hpp>
+// #include <toppra/geometric_path/piecewise_poly_path.hpp>
+// #include <toppra/parametrizer/spline.hpp>
+// #include <toppra/solver/seidel.hpp>
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
@@ -308,7 +315,7 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
     printf("Running execution thread\n");
     std::thread exec_thread([req = std::move(request.value()), this]() {
-        constexpr double timestep = 0.002;
+        // constexpr double timestep = 0.002;
 
         status_value_["running"] = true;
         status_value_["iter"] = 0;
@@ -320,13 +327,66 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         // Need adapter_->get_robot_info or similar which tell us about joint limits,
         // controller servo loop timestep, and other info we might need
 
-        GeometricPath path(req.joint_waypoints);
-        const auto trajectory = create_trajectory(path, req.speed, req.acceleration, timestep);
+        const int dof = req.num_joints;
+        constexpr double sample_period = 0.02;
+        constexpr double max_velocity = 0.2;
+        constexpr double max_acceleration = 1.0;
 
+        // Store waypoints from user in toppra::Vectors
+        toppra::Vectors waypoints;
+        for (auto& wp : req.joint_waypoints) {
+            waypoints.push_back(Eigen::Map<const toppra::Vector>(wp.data(), wp.size()));
+        }
+
+        // Assign parameter values s to the geometric waypoints
+        // TODO: This would be better: s[i] = s[i - 1] + norm(q[i] - q[i - 1])
+        toppra::Vector s_vec = toppra::Vector::LinSpaced(waypoints.size(), 0.0, waypoints.size() - 1);
+
+        // Create the cubic spline describing joint positions along the geometric path
+        toppra::BoundaryCond natural{2, toppra::Vector::Zero(dof)};
+        auto path = std::make_shared<toppra::PiecewisePolyPath>(
+            toppra::PiecewisePolyPath::CubicSpline(
+                waypoints, s_vec, toppra::BoundaryCondFull{natural, natural}));
+
+        // Set contraints for the velocity and acceleration
+        const toppra::Vector velocity_limit = toppra::Vector::Constant(dof, max_velocity);
+        const toppra::Vector acceleration_limit = toppra::Vector::Constant(dof, max_acceleration);
+        toppra::LinearConstraintPtrs constraints{
+            std::make_shared<toppra::constraint::LinearJointVelocity>(
+                -velocity_limit, velocity_limit),
+            std::make_shared<toppra::constraint::LinearJointAcceleration>(
+                -acceleration_limit, acceleration_limit),
+        };
+
+        // Compute a time-optimal path scaling s(t) subject to the joint limits
+        toppra::algorithm::TOPPRA algorithm{constraints, path};
+        algorithm.solver(std::make_shared<toppra::solver::Seidel>());
+        const auto result = algorithm.computePathParametrization(0.0, 0.0);
+        if (result != toppra::ReturnCode::OK) {
+            std::cerr << "TOPP-RA could not parameterize the path: "
+                      << algorithm.getErrorMessage() << '\n';
+            return;
+        }
+
+        // Construct the time-domain trajectory q(t) from the parameterization.
+        const auto &data = algorithm.getParameterizationData();
+        toppra::parametrizer::Spline trajectory{path, data.gridpoints, data.parametrization};
+        const double duration = trajectory.pathInterval()[1];
+        const int regular_points = static_cast<int>(std::floor(duration / sample_period));
+        const bool endpoint_is_regular = std::abs(regular_points * sample_period - duration) < 1e-12;
+        const int point_count = regular_points + (endpoint_is_regular ? 1 : 2);
+
+        // Store the result in a flat vector: (time, positions[6], velocities[6], accelerations[6])
         std::vector<double> trajectory_flat;
-        trajectory_flat.reserve(trajectory.size() * req.num_joints);
-        for (const auto& sample : trajectory) {
-            trajectory_flat.insert(trajectory_flat.end(), sample.begin(), sample.end());
+        for (int index = 0; index < point_count; ++index) {
+            const double time = index <= regular_points ? index * sample_period : duration;
+            trajectory_flat.push_back(time);
+            for (size_t i = 0; i < 3; ++i) {
+                auto vec = trajectory.eval_single(time, i);
+                for (auto& v : vec) {
+                    trajectory_flat.push_back(v);
+                }
+            }
         }
         //////////////////////////////////////////////////////////////////////////////////////
 

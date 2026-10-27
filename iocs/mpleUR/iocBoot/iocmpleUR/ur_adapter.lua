@@ -27,21 +27,15 @@ function moving()
 end
 
 function move(trajectory)
-    if #trajectory == 0 or (#trajectory % get_num_joints()) ~= 0 then
+    if #trajectory < 38 or (#trajectory % 19) ~= 0 then
         return false
     end
 
-    local trajectory_deg = {}
-    for i, value in ipairs(trajectory) do
-        trajectory_deg[i] = math.deg(value)
-    end
-
-    epics.put(P .. "Control:ServoTraj", trajectory_deg)
+    epics.put(P .. "Control:ServoTraj", trajectory)
     epics.put(P .. "Control:ServoStart", 1)
 
     -- HACK: wait for motion to start
     osi.sleep(0.2)
-
     return true
 end
 

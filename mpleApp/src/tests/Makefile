@@ -19,10 +19,10 @@ testCollisionsJson_SRCS += collisions.cpp
 testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
 
-TESTPROD_HOST += testTrajectory
-testTrajectory_SRCS += test_trajectory.cpp
-testTrajectory_LIBS += Com
-TESTS += testTrajectory
+# TESTPROD_HOST += testTrajectory
+# testTrajectory_SRCS += test_trajectory.cpp
+# testTrajectory_LIBS += Com
+# TESTS += testTrajectory
 
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 

@@ -28,8 +28,6 @@ class MpleAdapter {
     virtual bool moving() const = 0;
 
     /// \brief Starts execution of a time-scaled joint trajectory.
-    /// \param trajectory Flat, sample-major vector of joint positions.
-    /// \return True when the trajectory was accepted for execution.
     virtual bool move(const std::vector<double>& trajectory) const = 0;
 
     /// \brief Computes forward kinematics for the system

@@ -16,18 +16,25 @@ mpleSupport_DBD += mple.dbd
 
 # headers to install
 INC += mple_adapter.hpp
-INC += trajectory.hpp
+# INC += trajectory.hpp
 INC += mple_adapter_registry.hpp
 
 # Eigen
 USR_INCLUDES += -I$(TOP)/deps/eigen
 USR_INCLUDES += -I$(TOP)/deps/json/single_include
 
-# ompl
+# TOPP-RA
+TOPPRA = $(TOP)/deps/toppra/cpp/build/install
+USR_INCLUDES += -I$(TOPPRA)/include
+toppra_DIR = $(TOPPRA)/lib
+LIB_INSTALLS += $(TOPPRA)/lib/libtoppra.so
+
+# OMPL
 USR_INCLUDES += -I$(OMPL)/include/ompl-2.0
 ompl_DIR = $(OMPL)/lib64
 
 # Libraries needed for mple
+mple_LIBS += toppra
 mple_LIBS += ompl
 mple_LIBS += asyn
 mple_LIBS += lua
