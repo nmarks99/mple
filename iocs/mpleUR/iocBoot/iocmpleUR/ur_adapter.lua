@@ -5,11 +5,11 @@ local osi = require("osi")
 -- as global string variables to the lua state
 P = "mpleUR:"
 
-function get_num_joints()
+function num_axes()
     return 6
 end
 
-function get_joint_positions()
+function get_axis_positions()
     return epics.get(P .. "Receive:Joints")
 end
 

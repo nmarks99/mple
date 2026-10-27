@@ -20,15 +20,15 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
     // TODO: add user macros as global string variables to the lua state
 }
 
-unsigned int LuaMpleAdapter::get_num_joints() const {
+unsigned int LuaMpleAdapter::num_axes() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto value = call_lua_method<int>("get_num_joints");
+    auto value = call_lua_method<int>("num_axes");
     return value.value_or(0);
 }
 
-std::vector<double> LuaMpleAdapter::get_joint_positions() const {
+std::vector<double> LuaMpleAdapter::get_axis_positions() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto value = call_lua_method<std::vector<double>>("get_joint_positions");
+    auto value = call_lua_method<std::vector<double>>("get_axis_positions");
     return value.value_or(std::vector<double>{0.0});
 }
 
@@ -81,7 +81,7 @@ std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>&
 
     auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
     if (value) {
-        if (value->size() != static_cast<size_t>(get_num_joints()))  {
+        if (value->size() != static_cast<size_t>(num_axes()))  {
             throw std::runtime_error("Returned array from ik must be equal to the number of joints");
         }
     } else {

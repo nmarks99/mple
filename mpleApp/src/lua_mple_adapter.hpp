@@ -13,8 +13,8 @@ extern "C" {
 class LuaMpleAdapter : public MpleAdapter {
   public:
     LuaMpleAdapter(const char* script_path);
-    unsigned int get_num_joints() const override;
-    std::vector<double> get_joint_positions() const override;
+    unsigned int num_axes() const override;
+    std::vector<double> get_axis_positions() const override;
     std::vector<double> get_tcp_pose() const override;
     void stop() const override;
     bool moving() const override;

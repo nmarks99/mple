@@ -24,30 +24,24 @@ class Mple:
         })
 
         result = self.ctxt.rpc(f"{self.prefix}Validate", ValidateMsg)
-        #  print(f"Valid: {result['valid']}")
-        #  print(f"Description: {result['description']}")
-        #  return result["valid"]
         return result
 
-    def execute(self, joint_waypoints):
+    def execute(self, joint_waypoints, velocity, acceleration):
         ExecuteMsg = Value(Type([
             ('joint_waypoints', 'ad'),
             ('speed', 'd'),
             ('acceleration', 'd')
         ]), {
             'joint_waypoints': joint_waypoints,
-            'speed': pi/3,
-            'acceleration': pi,
+            'speed': velocity,
+            'acceleration': acceleration,
         })
         result = self.ctxt.rpc(f"{self.prefix}Execute", ExecuteMsg)
         return result
-        #  print(f"Error Code: {result["error_code"]}")
-        #  print(f"Description: {result["description"]}")
 
-
-    def validate_and_execute(self, joint_waypoints):
+    def validate_and_execute(self, joint_waypoints, velocity, acceleration):
         if (self.validate(joint_waypoints)["valid"]):
-            self.execute(joint_waypoints)
+            self.execute(joint_waypoints, velocity, acceleration)
         else:
             print("Validation failed. Aborting.")
 

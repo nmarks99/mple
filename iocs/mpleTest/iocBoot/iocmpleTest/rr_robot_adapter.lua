@@ -9,11 +9,11 @@ P = "mpleTest:"
 L1 = 300 / 1000.0
 L2 = 250 / 1000.0
 
-function get_num_joints()
+function num_axes()
     return 2
 end
 
-function get_joint_positions()
+function get_axis_positions()
     -- Get joint angles, convert from deg->rad
     local j1 = math.rad(epics.get(P .. "J1.VAL"))
     local j2 = math.rad(epics.get(P .. "J2.VAL"))

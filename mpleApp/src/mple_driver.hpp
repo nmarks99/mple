@@ -21,9 +21,6 @@ class MpleDriver {
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
-    // pvxs::Value running_value_;
-    // pvxs::server::SharedPV running_pv_ = pvxs::server::SharedPV::buildReadonly();
-
     pvxs::Value stop_value_;
     std::atomic<bool> should_stop_ = false;
     pvxs::server::SharedPV stop_pv_ = pvxs::server::SharedPV::buildMailbox();
@@ -79,7 +76,7 @@ class MpleDriver {
 
         static std::optional<ValidateRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
             try {
-                auto validate_req = ValidateRequest(value, adapter->get_num_joints());
+                auto validate_req = ValidateRequest(value, adapter->num_axes());
                 if (validate_req.request_valid_) {
                     return validate_req;
                 } else {
@@ -140,7 +137,7 @@ class MpleDriver {
 
         static std::optional<ExecuteRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
             try {
-                return ExecuteRequest(value, adapter->get_num_joints());
+                return ExecuteRequest(value, adapter->num_axes());
             } catch (...) {
             }
             return std::nullopt;

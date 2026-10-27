@@ -13,14 +13,6 @@
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 
-// #include <toppra/algorithm/toppra.hpp>
-// #include <toppra/constraint/linear_joint_acceleration.hpp>
-// #include <toppra/constraint/linear_joint_velocity.hpp>
-// #include <toppra/geometric_path/piecewise_poly_path.hpp>
-// #include <toppra/parametrizer/spline.hpp>
-// #include <toppra/parametrizer/const_accel.hpp>
-// #include <toppra/solver/seidel.hpp>
-
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
@@ -151,8 +143,8 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     PlanResponse response;
-    const auto njoints = adapter_->get_num_joints();
-    auto request = PlanRequest::build(request_value, adapter_->get_num_joints());
+    const auto njoints = adapter_->num_axes();
+    auto request = PlanRequest::build(request_value, adapter_->num_axes());
 
     if (!request) {
         printf("Failed to build PlanRequest\n");
@@ -176,7 +168,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     std::vector<double> req_start(request->start.begin(), request->start.end());
     if (req_start.size() == 0) {
         std::cout << "No starting state provided, using current state as start\n";
-        req_start = adapter_->get_joint_positions();
+        req_start = adapter_->get_axis_positions();
     }
     ob::ScopedState<> start(space);
     ob::ScopedState<> goal(space);
@@ -236,7 +228,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
-    auto request = FKRequest::build(request_value, adapter_->get_num_joints());
+    auto request = FKRequest::build(request_value, adapter_->num_axes());
 
     if (!request) {
         printf("Failed to build FKRequest\n");
@@ -280,7 +272,7 @@ void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * adapter_->get_num_joints());
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * adapter_->num_axes());
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         auto joints = adapter_->ik(wp);
@@ -325,7 +317,7 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 
         std::vector<double> trajectory_flat;
         try {
-            trajectory_flat = build_trajectory(req.joint_waypoints, req.num_joints, 0.5, 1.0);
+            trajectory_flat = build_trajectory(req.joint_waypoints, req.num_joints, req.speed, req.acceleration);
         } catch (const std::exception& e) {
             std::cout << e.what() << std::endl;
         }

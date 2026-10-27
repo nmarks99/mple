@@ -8,4 +8,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-mple = { path = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python" }
+mple = { path = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python", editable=true}

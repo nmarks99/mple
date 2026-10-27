@@ -10,12 +10,12 @@ class MpleAdapter {
     // TODO:
     // virtual ? get_joint_limits() const = 0;
 
-    /// \brief Gets the number of joints in the system
-    virtual unsigned int get_num_joints() const = 0;
+    /// \brief Gets the number of axes in the system
+    virtual unsigned int num_axes() const = 0;
 
     /// \brief Gets the current joint positions
     /// \return vector of joint positions
-    virtual std::vector<double> get_joint_positions() const = 0;
+    virtual std::vector<double> get_axis_positions() const = 0;
 
     /// \brief Gets the current pose of the tool center point (TCP) in 3D space
     /// \return vector of the current pose (x,y,z,rx,ry,rz)
@@ -37,7 +37,7 @@ class MpleAdapter {
     /// however if they do not and choose to call it here, this method must know how to compute
     /// FK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const {
-        if (joint_angles.size() != static_cast<size_t>(get_num_joints())) {
+        if (joint_angles.size() != static_cast<size_t>(num_axes())) {
             return std::nullopt;
         }
         return std::nullopt;
@@ -50,7 +50,7 @@ class MpleAdapter {
     /// however if they do not and choose to call it directly, this method must know how to compute
     /// IK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const {
-        if (tcp_pose.size() != static_cast<size_t>(get_num_joints())) {
+        if (tcp_pose.size() != static_cast<size_t>(num_axes())) {
             return std::nullopt;
         }
         return std::nullopt;

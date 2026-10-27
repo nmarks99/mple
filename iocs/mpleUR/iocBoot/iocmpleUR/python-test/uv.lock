@@ -26,7 +26,7 @@ wheels = [
 [[package]]
 name = "mple"
 version = "0.1.0"
-source = { directory = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python" }
+source = { editable = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python" }
 dependencies = [
     { name = "p4p" },
 ]
@@ -179,7 +179,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mple", directory = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python" },
+    { name = "mple", editable = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python" },
     { name = "pyepics", specifier = ">=3.5.10" },
 ]
 
