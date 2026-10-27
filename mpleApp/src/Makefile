@@ -16,7 +16,6 @@ mpleSupport_DBD += mple.dbd
 
 # headers to install
 INC += mple_adapter.hpp
-# INC += trajectory.hpp
 INC += mple_adapter_registry.hpp
 
 # Eigen
@@ -43,6 +42,7 @@ mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
 mple_SRCS += mple_driver.cpp
+mple_SRCS += trajectory.cpp
 mple_SRCS += collisions.cpp
 mple_SRCS += lua_mple_adapter.cpp
 mple_SRCS += mple_adapter_registry.cpp
