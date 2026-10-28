@@ -29,8 +29,12 @@ toppra_DIR = $(TOPPRA)/lib
 LIB_INSTALLS += $(TOPPRA)/lib/libtoppra.so
 
 # OMPL
-USR_INCLUDES += -I$(OMPL)/include/ompl-2.0
-ompl_DIR = $(OMPL)/lib64
+OMPL = $(TOP)/deps/ompl/install/$(T_A)
+USR_INCLUDES += -isystem $(OMPL)/include/ompl-2.0
+ompl_DIR = $(OMPL)/lib
+LIB_INSTALLS += $(OMPL)/lib/libompl.so
+LIB_INSTALLS += $(OMPL)/lib/libompl.so.19
+LIB_INSTALLS += $(OMPL)/lib/libompl.so.2.0.2
 
 # Libraries needed for mple
 mple_LIBS += toppra

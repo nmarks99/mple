@@ -10,3 +10,6 @@
 [submodule ".ci"]
 	path = .ci
 	url = https://github.com/epics-base/ci-scripts
+[submodule "deps/ompl/ompl"]
+	path = deps/ompl/ompl
+	url = https://github.com/ompl/ompl.git

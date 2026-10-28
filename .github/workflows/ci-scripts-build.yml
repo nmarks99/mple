@@ -9,6 +9,7 @@ on:
 
 env:
   SETUP_PATH: .github/workflows:.ci
+  APT: libboost-program-options-dev libboost-serialization-dev
 
 jobs:
   build-base:

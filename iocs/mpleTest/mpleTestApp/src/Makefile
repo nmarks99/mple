@@ -47,7 +47,8 @@ endif
 ifdef MPLE
   $(DBD_NAME)_DBD += mpleSupport.dbd
   toppra_DIR = $(MPLE)/lib/$(T_A)
-  $(PROD_NAME)_LIBS := mple toppra $($(PROD_NAME)_LIBS)
+  ompl_DIR = $(MPLE)/lib/$(T_A)
+  $(PROD_NAME)_LIBS := mple toppra ompl $($(PROD_NAME)_LIBS)
 endif
 
 ifdef MOTOR
