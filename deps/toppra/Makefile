@@ -9,7 +9,13 @@ EIGEN_SOURCE = $(abspath $(CURDIR)/../eigen)
 CMAKE_BUILD_TYPE = $(if $(filter YES,$(HOST_OPT)),Release,RelWithDebInfo)
 
 .PHONY: all host inc build install buildInstall clean realclean archclean
-.PHONY: runtests tapfiles clean-tests test-results junitfiles
+.PHONY: check-cmake runtests tapfiles clean-tests test-results junitfiles
+
+check-cmake:
+	@command -v "$(CMAKE)" >/dev/null 2>&1 || { \
+	    echo "error: CMake is required to build TOPPRA; install cmake or set CMAKE=/path/to/cmake" >&2; \
+	    exit 1; \
+	}
 
 all: install
 host: install$(DIVIDER)$(EPICS_HOST_ARCH)
@@ -17,12 +23,13 @@ inc build install buildInstall: install$(DIVIDER)$(EPICS_HOST_ARCH)
 
 inc$(DIVIDER)% build$(DIVIDER)% buildInstall$(DIVIDER)%: install$(DIVIDER)%
 
-install$(DIVIDER)%:
+install$(DIVIDER)%: check-cmake
 	@if [ "$*" != "$(EPICS_HOST_ARCH)" ]; then \
 	    echo "TOPPRA cross-build for '$*' is not configured" >&2; \
 	    exit 1; \
 	fi
 	$(CMAKE) -S $(EIGEN_SOURCE) -B $(CURDIR)/O.$*/eigen \
+	    -DCMAKE_MESSAGE_LOG_LEVEL=NOTICE \
 	    -DBUILD_TESTING=OFF \
 	    -DEIGEN_BUILD_TESTING=OFF \
 	    -DEIGEN_BUILD_BLAS=OFF \
