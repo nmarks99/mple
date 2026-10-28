@@ -129,14 +129,10 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
 void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-    printf("Stop callback called!\n");
-    // Stops the current motion but we must also stop the execute
+    // Stops the current motion and also stop the execute
     // callback thread from commanding further motion
     adapter_->stop();
-
-    // TODO: Stop the execute callback thread from commanding further motion
-    // - Set flag should_stop_ = true, where should_stop_ is atomic<bool>
-    should_stop_ = true;
+    should_stop_.store(true);
     op->reply();
 }
 void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -309,17 +305,38 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     std::thread exec_thread([req = std::move(request.value()), this]() {
         status_value_["running"] = true;
         status_value_["iter"] = 0;
-        status_value_["max"] = req.joint_waypoints.size();
+        status_value_["max"] = req.waypoints.size();
         status_pv_.post(status_value_);
 
         try {
-            std::vector<double> trajectory_flat;
-            trajectory_flat = build_trajectory(req.joint_waypoints, req.num_joints, req.speed, req.acceleration);
+
+            // Build the time parametrized trajectory with TOPP-RA
+            auto trajectory_flat = build_trajectory(
+                req.waypoints, req.num_joints, req.speed, req.acceleration);
+
+            // Command the move
             if (!adapter_->move(trajectory_flat)) {
                 throw std::runtime_error("Error in adapter::move");
             }
-            // TODO: timeout
+
+            // Wait for the move to complete
+            auto start = std::chrono::steady_clock::now();
             while (adapter_->moving()) {
+
+                // check if a stop was requested
+                if (should_stop_.load()) {
+                    should_stop_.store(false);
+                    break;
+                }
+
+                // check for timeout
+                auto now = std::chrono::steady_clock::now();
+                auto elap_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+                if (elap_ms.count() >= req.timeout * 1000.0) {
+                    std::cerr << "Execution timed out (timeout=" << req.timeout <<" sec)\n";
+                    adapter_->stop();
+                    break;
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
         } catch (const std::exception& e) {

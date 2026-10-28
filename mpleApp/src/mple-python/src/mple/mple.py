@@ -26,15 +26,17 @@ class Mple:
         result = self.ctxt.rpc(f"{self.prefix}Validate", ValidateMsg)
         return result
 
-    def execute(self, joint_waypoints, speed, acceleration):
+    def execute(self, waypoints, speed, acceleration, timeout=300.0):
         ExecuteMsg = Value(Type([
-            ('joint_waypoints', 'ad'),
+            ('waypoints', 'ad'),
             ('speed', 'd'),
-            ('acceleration', 'd')
+            ('acceleration', 'd'),
+            ('timeout', 'd')
         ]), {
-            'joint_waypoints': joint_waypoints,
+            'waypoints': waypoints,
             'speed': speed,
             'acceleration': acceleration,
+            'timeout': timeout,
         })
         result = self.ctxt.rpc(f"{self.prefix}Execute", ExecuteMsg)
         return result

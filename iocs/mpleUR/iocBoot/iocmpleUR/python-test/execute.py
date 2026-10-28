@@ -21,8 +21,8 @@ def wait_motion():
 def main():
     mple = Mple(f"{PREFIX}mple:")
 
-    vel = 10.0
-    acc = 100.0
+    vel = 0.5
+    acc = vel*10
 
     mple.execute(build_traj(10), vel, acc)
     wait_motion()

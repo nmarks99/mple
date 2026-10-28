@@ -40,5 +40,5 @@ function move(trajectory)
 end
 
 function stop()
-    epics.put(P .. "Control:Stop.PROC", 1)
+    epics.put(P .. "Control:ServoStop", 1)
 end

@@ -29,9 +29,6 @@ std::vector<double> build_trajectory(
         throw std::invalid_argument("Maximum acceleration must be finite and positive");
     }
 
-    // TODO: choose this more intelligently
-    constexpr double sample_period = 0.01;
-
     // Store waypoints from user in toppra::Vectors
     toppra::Vectors waypoints;
     for (auto& wp : joint_states) {
@@ -70,26 +67,21 @@ std::vector<double> build_trajectory(
     }
 
     // Construct the time-domain trajectory q(t) from the parameterization.
-    const auto &data = algorithm.getParameterizationData();
+    const auto& data = algorithm.getParameterizationData();
     toppra::parametrizer::ConstAccel trajectory{path, data.gridpoints, data.parametrization};
-    const double duration = trajectory.pathInterval()[1];
-    const int regular_points = static_cast<int>(std::floor(duration / sample_period));
-    const bool endpoint_is_regular = std::abs(regular_points * sample_period - duration) < 1e-12;
-    const int point_count = regular_points + (endpoint_is_regular ? 1 : 2);
+    const auto& times = trajectory.getTimes();
 
     // Store the result in a flat vector: (time, positions[6], velocities[6], accelerations[6])
     std::vector<double> trajectory_flat;
-    for (int index = 0; index < point_count; ++index) {
-        const double time = index <= regular_points ? index * sample_period : duration;
+    trajectory_flat.reserve((num_axes * 3 + 1) * times.size());
+    for (Eigen::Index index = 0; index < times.size(); ++index) {
+        const double time = times[index];
         trajectory_flat.push_back(time);
-        for (size_t i = 0; i < 3; ++i) {
-            auto vec = trajectory.eval_single(time, i);
-            for (auto& v : vec) {
-                trajectory_flat.push_back(v);
-            }
+        for (int order = 0; order < 3; ++order) {
+            const auto values = trajectory.eval_single(time, order);
+            trajectory_flat.insert(trajectory_flat.end(), values.begin(), values.end());
         }
     }
 
-    printf("trajectory_flat.size() = %ld", trajectory_flat.size());
     return trajectory_flat;
 }
