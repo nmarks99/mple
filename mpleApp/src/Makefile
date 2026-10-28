@@ -23,8 +23,8 @@ USR_INCLUDES += -I$(TOP)/deps/eigen
 USR_INCLUDES += -I$(TOP)/deps/json/single_include
 
 # TOPP-RA
-TOPPRA = $(TOP)/deps/toppra/cpp/build/install
-USR_INCLUDES += -I$(TOPPRA)/include
+TOPPRA = $(TOP)/deps/toppra/install/$(T_A)
+USR_INCLUDES += -isystem $(TOPPRA)/include
 toppra_DIR = $(TOPPRA)/lib
 LIB_INSTALLS += $(TOPPRA)/lib/libtoppra.so
 

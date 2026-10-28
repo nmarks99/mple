@@ -22,5 +22,6 @@ scan1Menu.sav
 .cache/
 .loglogin
 compile_commands.json
+deps/toppra/install/
 *.local
 __pycache__/

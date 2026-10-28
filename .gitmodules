@@ -5,5 +5,5 @@
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
 [submodule "deps/toppra"]
-	path = deps/toppra
+	path = deps/toppra/toppra
 	url = git@github.com:hungpham2511/toppra.git
