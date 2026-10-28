@@ -1,10 +1,7 @@
 name: mple
 
-# Trigger on pushes and PRs to any branch
 on:
   push:
-    branches:
-      - master
     paths-ignore:
       - "**/*.md"
       - "**/*.txt"
