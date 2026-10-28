@@ -19,6 +19,7 @@ endef
 $(foreach dir, $(filter-out configure,$(DIRS)),$(eval $(call DIR_template,$(dir))))
 
 mpleApp_DEPEND_DIRS += deps/toppra deps/ompl
+iocs_DEPEND_DIRS += mpleApp
 
 include $(TOP)/configure/RULES_TOP
 
