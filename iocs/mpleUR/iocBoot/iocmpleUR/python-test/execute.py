@@ -21,13 +21,11 @@ def wait_motion():
 def main():
     mple = Mple(f"{PREFIX}mple:")
 
-    vel = 0.5
-    acc = vel*10
-
-    mple.execute(build_traj(10), vel, acc)
+    speed = 0.1
+    accel = speed*10
+    mple.execute(build_traj(10), speed, accel)
     wait_motion()
-    mple.execute(build_traj(-10), vel, acc)
-    wait_motion()
+    mple.execute(build_traj(-10), speed, accel)
 
 if __name__ == "__main__":
     main()

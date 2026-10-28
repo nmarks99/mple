@@ -129,10 +129,10 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
 void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-    // Stops the current motion and also stop the execute
-    // callback thread from commanding further motion
-    adapter_->stop();
-    should_stop_.store(true);
+    auto expected = ExecutionState::Running;
+    if (execution_state_.compare_exchange_strong(expected, ExecutionState::StopRequested)) {
+        adapter_->stop();
+    }
     op->reply();
 }
 void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -302,56 +302,74 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    std::thread exec_thread([req = std::move(request.value()), this]() {
-        status_value_["running"] = true;
-        status_value_["iter"] = 0;
-        status_value_["max"] = req.waypoints.size();
-        status_pv_.post(status_value_);
+    auto expected = ExecutionState::Idle;
+    if (!execution_state_.compare_exchange_strong(expected, ExecutionState::Running)) {
+        response.error_code = -1;
+        response.description = "Execution already running";
+        op->reply(response.to_value());
+        return;
+    }
 
-        try {
+    std::thread exec_thread;
+    try {
+        exec_thread = std::thread([req = std::move(request.value()), this]() {
+            status_value_["running"] = true;
+            status_value_["iter"] = 0;
+            status_value_["max"] = req.waypoints.size();
+            status_pv_.post(status_value_);
 
-            // Build the time parametrized trajectory with TOPP-RA
-            auto trajectory_flat = build_trajectory(
-                req.waypoints, req.num_joints, req.speed, req.acceleration);
+            try {
 
-            // Command the move
-            if (!adapter_->move(trajectory_flat)) {
-                throw std::runtime_error("Error in adapter::move");
-            }
+                // Build the time parametrized trajectory with TOPP-RA
+                auto trajectory_flat = build_trajectory(
+                    req.waypoints, req.num_joints, req.speed, req.acceleration);
 
-            // Wait for the move to complete
-            auto start = std::chrono::steady_clock::now();
-            while (adapter_->moving()) {
-
-                // check if a stop was requested
-                if (should_stop_.load()) {
-                    should_stop_.store(false);
-                    break;
+                if (execution_state_.load() == ExecutionState::StopRequested) {
+                    throw std::runtime_error("Execution stopped");
                 }
 
-                // check for timeout
-                auto now = std::chrono::steady_clock::now();
-                auto elap_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
-                if (elap_ms.count() >= req.timeout * 1000.0) {
-                    std::cerr << "Execution timed out (timeout=" << req.timeout <<" sec)\n";
+                // Command the move
+                if (!adapter_->move(trajectory_flat)) {
+                    throw std::runtime_error("Error in adapter::move");
+                }
+
+                // Stop may have been requested while adapter::move was running.
+                if (execution_state_.load() == ExecutionState::StopRequested) {
                     adapter_->stop();
-                    break;
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Execution failed: " << e.what() << "\n";
-        } catch (...) {
-            std::cerr << "Execution failed with unknown error\n";
-        }
 
-        status_value_["running"] = false;
-        status_value_["iter"] = 0;
-        status_pv_.post(status_value_);
-    });
+                // Wait for the move to complete
+                auto start = std::chrono::steady_clock::now();
+                while (execution_state_.load() == ExecutionState::Running && adapter_->moving()) {
+                    auto now = std::chrono::steady_clock::now();
+                    auto elap_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+                    if (elap_ms.count() >= req.timeout * 1000.0) {
+                        std::cerr << "Execution timed out (" << req.timeout << " sec)\n";
+                        adapter_->stop();
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Execution failed: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "Execution failed with unknown error\n";
+            }
+
+            status_value_["running"] = false;
+            status_value_["iter"] = 0;
+            status_pv_.post(status_value_);
+            execution_state_.store(ExecutionState::Idle);
+        });
+    } catch (const std::exception& e) {
+        execution_state_.store(ExecutionState::Idle);
+        response.error_code = -1;
+        response.description = std::string("Failed to start execution thread: ") + e.what();
+        op->reply(response.to_value());
+        return;
+    }
     exec_thread.detach();
 
-    // Reply right away saying we started the process
     response.error_code = 0;
     response.description = "Execution started";
     op->reply(response.to_value());

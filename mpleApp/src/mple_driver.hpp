@@ -21,8 +21,14 @@ class MpleDriver {
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
+    enum class ExecutionState {
+        Idle,
+        Running,
+        StopRequested,
+    };
+
     pvxs::Value stop_value_;
-    std::atomic<bool> should_stop_ = false;
+    std::atomic<ExecutionState> execution_state_ = ExecutionState::Idle;
     pvxs::server::SharedPV stop_pv_ = pvxs::server::SharedPV::buildMailbox();
 
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
