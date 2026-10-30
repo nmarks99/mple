@@ -24,5 +24,6 @@ scan1Menu.sav
 compile_commands.json
 deps/toppra/install/
 deps/ompl/install/
+deps/pinocchio/install/
 *.local
 __pycache__/
