@@ -1,9 +1,9 @@
 local epics = require("epics")
 local osi = require("osi")
 
--- TODO: make configurable by adding user macros
--- as global string variables to the lua state
-P = "mpleUR:"
+function config()
+    return MPLE .. "/description/ur5e.urdf"
+end
 
 function num_axes()
     return 6

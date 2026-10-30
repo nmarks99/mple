@@ -12,7 +12,7 @@ extern "C" {
 /// \brief MpleAdapter whose methods are implemented in a user provided lua script
 class LuaMpleAdapter : public MpleAdapter {
   public:
-    LuaMpleAdapter(const char* script_path);
+    LuaMpleAdapter(const char* script_path, const char* macros);
     unsigned int num_axes() const override;
     std::vector<double> get_axis_positions() const override;
     std::vector<double> get_tcp_pose() const override;

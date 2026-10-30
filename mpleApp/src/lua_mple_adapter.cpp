@@ -1,15 +1,21 @@
-#include "lua_mple_adapter.hpp"
-#include "iocsh.h"
-#include "epicsExport.h"
-#include "luaEpics.h"
+#include <iocsh.h>
+#include <epicsExport.h>
+#include <luaEpics.h>
+#include <macLib.h>
 #include <stdexcept>
+#include <iostream>
 #include <cmath>
 
-LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
+#include "lua_mple_adapter.hpp"
+
+LuaMpleAdapter::LuaMpleAdapter(const char* script_path, const char* macros) {
     lua_state_ = luaCreateState();
     if (!lua_state_) {
         throw std::runtime_error("Error creating lua state");
     }
+
+    // Push macros to globals in lua state
+    luaLoadMacros(lua_state_, macros);
 
     int err = luaLoadScript(lua_state_, script_path);
     if (err) {
@@ -17,7 +23,9 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path) {
         printf("\t%s\n", err);
         throw std::runtime_error("Error compiling script file: " + std::string(script_path));
     }
-    // TODO: add user macros as global string variables to the lua state
+
+    // TODO:
+    // auto config = call_lua_method<SystemModel>("config");
 }
 
 unsigned int LuaMpleAdapter::num_axes() const {
@@ -90,16 +98,17 @@ std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>&
     return value;
 }
 
-extern "C" void LuaMpleAdapterConfig(const char* name, const char* script_path) {
-    register_adapter(new LuaMpleAdapter(script_path), name);
+extern "C" void LuaMpleAdapterConfig(const char* name, const char* script_path, const char* macros) {
+    register_adapter(new LuaMpleAdapter(script_path, macros), name);
 }
 
 static const iocshArg LuaMpleAdapterArg0 = {"name", iocshArgString};
 static const iocshArg LuaMpleAdapterArg1 = {"script_path", iocshArgString};
-static const iocshArg* const LuaMpleAdapterArgs[2] = {&LuaMpleAdapterArg0, &LuaMpleAdapterArg1};
-static const iocshFuncDef LuaMpleAdapterFuncDef = {"LuaMpleAdapterConfig", 2, LuaMpleAdapterArgs};
+static const iocshArg LuaMpleAdapterArg2 = {"macros", iocshArgString};
+static const iocshArg* const LuaMpleAdapterArgs[3] = {&LuaMpleAdapterArg0, &LuaMpleAdapterArg1, &LuaMpleAdapterArg2};
+static const iocshFuncDef LuaMpleAdapterFuncDef = {"LuaMpleAdapterConfig", 3, LuaMpleAdapterArgs};
 
-static void LuaMpleAdapterCallFunc(const iocshArgBuf* args) { LuaMpleAdapterConfig(args[0].sval, args[1].sval); }
+static void LuaMpleAdapterCallFunc(const iocshArgBuf* args) { LuaMpleAdapterConfig(args[0].sval, args[1].sval, args[2].sval); }
 
 void LuaMpleAdapterRegister(void) { iocshRegister(&LuaMpleAdapterFuncDef, LuaMpleAdapterCallFunc); }
 
