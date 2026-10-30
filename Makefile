@@ -8,7 +8,7 @@ DIRS := $(DIRS) $(filter-out $(DIRS), deps/pinocchio)
 DIRS := $(DIRS) $(filter-out $(DIRS), $(wildcard *App))
 
 DIRS += tests
-tests_DEPEND_DIRS += deps/toppra
+tests_DEPEND_DIRS += deps/toppra deps/pinocchio
 
 ifeq ($(BUILD_IOCS), YES)
 DIRS += $(wildcard iocs)
