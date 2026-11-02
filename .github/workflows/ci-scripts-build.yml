@@ -9,7 +9,7 @@ on:
 
 env:
   SETUP_PATH: .github/workflows:.ci
-  APT: libreadline-dev libevent-dev libtirpc-dev libboost-program-options-dev libboost-serialization-dev
+  APT: libreadline-dev libevent-dev libtirpc-dev libboost-program-options-dev libboost-serialization-dev libboost-filesystem-dev
 
 jobs:
   build-base:
@@ -20,7 +20,6 @@ jobs:
       BCFG: ${{ matrix.configuration }}
       BASE: ${{ matrix.base }}
       SET: ${{ matrix.set }}
-      # APT: re2c libxml2-dev libtirpc-dev libboost-all-dev
       EXTRA: ${{ matrix.extra }}
 
     strategy:
@@ -43,10 +42,24 @@ jobs:
       - name: Prepare and compile EPICS dependencies
         run: python .ci/cue.py prepare
 
-      - name: Build main module
+      - name: Build mple-support
+        shell: bash
+        env:
+          EPICS_HOST_ARCH: linux-x86_64
+        run: |
+          git clone --depth 1 https://github.com/nmarks99/mple-support.git "$RUNNER_TEMP/mple-support"
+          cd "$RUNNER_TEMP/mple-support"
+          cmake --preset release
+          cmake --build "build/$EPICS_HOST_ARCH" --parallel $(nproc)
+          cmake --install "build/$EPICS_HOST_ARCH"
+          MPLE_SUPPORT="$PWD/install/$EPICS_HOST_ARCH"
+          cd -
+          echo "MPLE_SUPPORT=$MPLE_SUPPORT" >> "configure/CONFIG_SITE.local"
+
+      - name: Build mple
         run: python .ci/cue.py build
 
-      - name: Run main module tests
+      - name: Run mple tests
         run: python .ci/cue.py -T 20M test
 
       - name: Upload tapfiles Artifact

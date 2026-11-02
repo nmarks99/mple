@@ -13,19 +13,7 @@ USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_MAJOR_VERSION=3
 USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_MINOR_VERSION=0
 USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_PATCH_VERSION=1
 
-# ----------
-USR_INCLUDES += -I$(TOP)/deps/eigen
-USR_INCLUDES += -I$(TOP)/deps/json/include
-
-TOPPRA = $(TOP)/deps/toppra/install/$(T_A)
-USR_INCLUDES += -isystem $(TOPPRA)/include
-toppra_DIR = $(TOPPRA)/lib
-
-PINOCCHIO = $(TOP)/deps/pinocchio/install/$(T_A)
-USR_INCLUDES += -isystem $(PINOCCHIO)/include
-pinocchio_default_DIR = $(PINOCCHIO)/lib
-pinocchio_parsers_DIR = $(PINOCCHIO)/lib
-# ----------
+USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
 
 SRC_DIRS += $(TOP)/mpleApp/src
 

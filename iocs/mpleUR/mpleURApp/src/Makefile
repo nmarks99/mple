@@ -60,9 +60,7 @@ endif
 
 ifdef MPLE
   $(DBD_NAME)_DBD += mpleSupport.dbd
-  toppra_DIR = $(MPLE)/lib/$(T_A)
-  ompl_DIR = $(MPLE)/lib/$(T_A)
-  $(PROD_NAME)_LIBS := mple toppra ompl $($(PROD_NAME)_LIBS)
+  $(PROD_NAME)_LIBS := mple $($(PROD_NAME)_LIBS)
 endif
 
 ifdef URROBOT

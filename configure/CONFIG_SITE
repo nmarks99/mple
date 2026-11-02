@@ -49,4 +49,5 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 -include $(TOP)/configure/CONFIG_SITE.local
 -include $(TOP)/configure/CONFIG_SITE.local.$(OS_CLASS)
 
+include $(TOP)/configure/CONFIG_MPLE_SUPPORT
 

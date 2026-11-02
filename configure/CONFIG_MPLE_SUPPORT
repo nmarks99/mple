@@ -1,0 +1,11 @@
+ifndef MPLE_SUPPORT
+$(error MPLE_SUPPORT must point to an installed mple-support prefix)
+endif
+
+MPLE_SUPPORT_MK = $(MPLE_SUPPORT)/share/mple-support/mple-support.mk
+
+ifeq ($(wildcard $(MPLE_SUPPORT_MK)),)
+$(error Cannot find $(MPLE_SUPPORT_MK))
+endif
+
+include $(MPLE_SUPPORT_MK)
