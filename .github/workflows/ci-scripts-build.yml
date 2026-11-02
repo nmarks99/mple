@@ -52,7 +52,7 @@ jobs:
           cmake --preset release
           cmake --build "build/$EPICS_HOST_ARCH" --parallel $(nproc)
           cmake --install "build/$EPICS_HOST_ARCH"
-          MPLE_SUPPORT="$PWD/install/$EPICS_HOST_ARCH"
+          MPLE_SUPPORT="$PWD"
           cd -
           echo "MPLE_SUPPORT=$MPLE_SUPPORT" >> "configure/CONFIG_SITE.local"
 
