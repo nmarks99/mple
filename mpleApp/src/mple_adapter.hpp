@@ -2,6 +2,8 @@
 #include <vector>
 #include <optional>
 
+#include "trajectory.hpp"
+
 /// \brief Abstract base class for implementing a robot specific adapter for mple
 class MpleAdapter {
   public:
@@ -28,7 +30,7 @@ class MpleAdapter {
     virtual bool moving() const = 0;
 
     /// \brief Starts execution of a time-scaled joint trajectory.
-    virtual bool move(const std::vector<double>& trajectory) const = 0;
+    virtual bool move(const Trajectory& trajectory) const = 0;
 
     /// \brief Computes forward kinematics for the system
     ///

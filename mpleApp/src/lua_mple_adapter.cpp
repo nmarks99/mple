@@ -60,7 +60,7 @@ bool LuaMpleAdapter::moving() const {
     return ret.value();
 };
 
-bool LuaMpleAdapter::move(const std::vector<double>& trajectory) const {
+bool LuaMpleAdapter::move(const Trajectory& trajectory) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<bool>("move", trajectory);
     if (!ret) {

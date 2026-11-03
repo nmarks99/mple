@@ -27,11 +27,38 @@ function moving()
 end
 
 function move(trajectory)
-    if #trajectory < 38 or (#trajectory % 19) ~= 0 then
+
+    -- trajectory argument is of the form:
+    -- {
+        -- {
+            -- time = 0,
+            -- position = {...},
+            -- velocity = {...},
+            -- acceleration = {...},
+        -- } ...,
+    -- }
+
+    -- Convert the trajectory to the format we
+    -- need to provide to the urRobot ServoTraj PV
+    local traj_flat = {}
+    for _, point in ipairs(trajectory) do
+        table.insert(traj_flat, point.time);
+        for _, pos in ipairs(point.position) do
+            table.insert(traj_flat, pos);
+        end
+        for _, vel in ipairs(point.velocity) do
+            table.insert(traj_flat, vel);
+        end
+        for _, acc in ipairs(point.acceleration) do
+            table.insert(traj_flat, acc);
+        end
+    end
+    if #traj_flat < 38 or (#traj_flat % 19) ~= 0 then
+        print("Failed to convert trajectory to proper format")
         return false
     end
 
-    epics.put(P .. "Control:ServoTraj", trajectory)
+    epics.put(P .. "Control:ServoTraj", traj_flat)
     epics.put(P .. "Control:ServoStart", 1)
 
     -- HACK: wait for motion to start

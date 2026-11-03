@@ -1,5 +1,6 @@
 #pragma once
 #include "mple_adapter.hpp"
+#include "trajectory.hpp"
 #include "mple_adapter_registry.hpp"
 #include <mutex>
 #include <vector>
@@ -18,7 +19,7 @@ class LuaMpleAdapter : public MpleAdapter {
     std::vector<double> get_tcp_pose() const override;
     void stop() const override;
     bool moving() const override;
-    bool move(const std::vector<double>& trajectory) const override;
+    bool move(const Trajectory& trajectory) const override;
     std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
     std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
 
@@ -61,6 +62,32 @@ class LuaMpleAdapter : public MpleAdapter {
             lua_newtable(lua_state_);
             for (size_t i = 0; i < val.size(); i++) {
                 lua_pushnumber(lua_state_, val[i]);
+                lua_rawseti(lua_state_, -2, i + 1);
+            }
+        } else if constexpr (std::is_same_v<T, Trajectory>) {
+            lua_newtable(lua_state_);
+            for (size_t i = 0; i < val.size(); ++i) {
+                const auto& pt = val[i];
+                lua_newtable(lua_state_);
+
+                lua_pushnumber(lua_state_, pt.time);
+                lua_setfield(lua_state_, -2, "time");
+
+                auto pushVec = [this](const std::vector<double>& v) {
+                    lua_newtable(lua_state_);
+                    for (size_t j = 0; j < v.size(); ++j) {
+                        lua_pushnumber(lua_state_, v[j]);
+                        lua_rawseti(lua_state_, -2, j + 1);
+                    }
+                };
+
+                pushVec(pt.position);
+                lua_setfield(lua_state_, -2, "position");
+                pushVec(pt.velocity);
+                lua_setfield(lua_state_, -2, "velocity");
+                pushVec(pt.acceleration);
+                lua_setfield(lua_state_, -2, "acceleration");
+
                 lua_rawseti(lua_state_, -2, i + 1);
             }
         }

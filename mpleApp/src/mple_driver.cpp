@@ -16,6 +16,7 @@
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
+// TODO: Remove: this was just for debugging
 template <typename T>
 std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
 
@@ -135,6 +136,7 @@ void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
     op->reply();
 }
+
 void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
@@ -321,15 +323,15 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             try {
 
                 // Build the time parametrized trajectory with TOPP-RA
-                auto trajectory_flat = build_trajectory(
-                    req.waypoints, req.num_joints, req.speed, req.acceleration);
+                Trajectory traj = build_trajectory(
+                    req.waypoints, req.speed, req.acceleration);
 
                 if (execution_state_.load() == ExecutionState::StopRequested) {
                     throw std::runtime_error("Execution stopped");
                 }
 
                 // Command the move
-                if (!adapter_->move(trajectory_flat)) {
+                if (!adapter_->move(traj)) {
                     throw std::runtime_error("Error in adapter::move");
                 }
 

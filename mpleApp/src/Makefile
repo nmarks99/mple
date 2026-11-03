@@ -20,6 +20,7 @@ mpleSupport_DBD += mple.dbd
 
 # headers to install
 INC += mple_adapter.hpp
+INC += trajectory.hpp
 INC += mple_adapter_registry.hpp
 
 USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
@@ -28,7 +29,7 @@ USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
 mple_LIBS += toppra
 mple_LIBS += ompl
 mple_SYS_LIBS += boost_serialization
-# mple_LIBS += asyn
+mple_LIBS += asyn
 mple_LIBS += lua
 mple_LIBS += pvxs
 mple_LIBS += $(EPICS_BASE_IOC_LIBS)
