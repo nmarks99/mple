@@ -15,6 +15,12 @@
 #include "mple_adapter_registry.hpp"
 #include "collisions.hpp"
 
+// TODO:
+// struct MpleSystemModel {
+    // std::optional<pinocchio::Model> model;
+    // std::optional<SimpleModel> model;
+// };
+
 class MpleDriver {
   public:
     MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& obstacles_file);
@@ -23,7 +29,6 @@ class MpleDriver {
     MpleAdapter* adapter_;
     CollisionWorld collision_world_ {};
     pinocchio::Model model_;
-
 
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();

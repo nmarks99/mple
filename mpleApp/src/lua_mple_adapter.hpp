@@ -178,6 +178,7 @@ class LuaMpleAdapter : public MpleAdapter {
             }
         }
 
+        // TODO: support simple (lua only/non-URDF) configuration
         else if constexpr (std::is_same_v<T, MpleModelConfig>) {
             if (num_args > 0) {
                 return std::nullopt;
@@ -188,12 +189,23 @@ class LuaMpleAdapter : public MpleAdapter {
             int return_type = lua_type(lua_state_, -1);
 
             // Checks that the return type is compatable with T
-            if (return_type == LUA_TSTRING) {
-                auto str = lua_tostring(lua_state_, -1);
-                value = MpleModelConfig{str};
+            if (return_type == LUA_TTABLE) {
+                if (!lua_istable(lua_state_, -1)) {
+                    throw std::runtime_error("Top of stack is not a table.");
+                }
+                lua_getfield(lua_state_, -1, "urdf");
+                if (lua_type(lua_state_, -1) != LUA_TSTRING) {
+                    lua_pop(lua_state_, 1);
+                    throw std::runtime_error("Model configuration field 'urdf' must be a string");
+                }
+
+                MpleModelConfig model_config;
+                model_config.urdf_path = lua_tostring(lua_state_, -1);
+                lua_pop(lua_state_, 1);
+                value = model_config;
             } else {
                 lua_pop(lua_state_, 1);
-                std::cerr << std::string(fn_name) + " must return a string, but doesn't\n";
+                std::cerr << std::string(fn_name) + " must return a table, but doesn't\n";
                 return std::nullopt;
             }
         }

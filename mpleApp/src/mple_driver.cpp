@@ -58,11 +58,14 @@ std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
 }
 
 MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& obstacles_file) {
+
+    // Find the adapter
     adapter_ = find_adapter(adapter_name);
     if (!adapter_) {
         throw std::runtime_error("Can't find adapter " + std::string(adapter_name));
     }
 
+    // Get information about the system and build the model
     auto model_config = adapter_->config();
     try {
         pinocchio::urdf::buildModel(model_config.urdf_path, model_);
@@ -72,6 +75,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         return;
     }
 
+    // Load obstacles file
     if (!obstacles_file.empty()) {
         printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
         collision_world_.add_from_json(obstacles_file);

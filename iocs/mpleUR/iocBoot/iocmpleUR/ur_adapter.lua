@@ -2,8 +2,9 @@ local epics = require("epics")
 local osi = require("osi")
 
 function config()
-    -- TODO: what should this structure look like?
-    return MPLE .. "/description/ur5e.urdf"
+    return {
+        urdf = MPLE .. "/description/ur5e.urdf"
+    }
 end
 
 function num_axes()
