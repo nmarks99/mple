@@ -10,7 +10,11 @@ function config()
 end
 
 function get_axis_positions()
-    return epics.get(P .. "Receive:Joints")
+   local joints = epics.get(P .. "Receive:Joints")
+   for i, joint in ipairs(joints) do
+       joints[i] = math.rad(joint)
+   end
+   return joints
 end
 
 function get_tcp_pose()
