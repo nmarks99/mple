@@ -16,8 +16,13 @@ MAIN(testTrajectory) {
 
     Trajectory traj = build_trajectory(waypoints, 1.0, 10.0);
 
-    std::cout << traj.size() << std::endl;
+    // For now, build_trajectory will use TOPP-RA's default of
+    // 100 path segments for its grid-point generator, therefore
+    // produces 101 points (including both end points)
+    constexpr size_t DEFAULT_TOPPRA_SEGMENTS = 100;
+    testOk1(traj.size() == DEFAULT_TOPPRA_SEGMENTS + 1);
 
+    // Check that the last point reaches our target position
     for (const auto& p : traj.back().position) {
         testOk1(p == 1.0);
     }
