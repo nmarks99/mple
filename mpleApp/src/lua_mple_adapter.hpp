@@ -14,9 +14,8 @@ extern "C" {
 class LuaMpleAdapter : public MpleAdapter {
   public:
     LuaMpleAdapter(const char* script_path, const char* macros);
-    std::vector<double> get_axis_positions() const override;
-    std::vector<double> get_tcp_pose() const override;
     MpleModelConfig config() override;
+    std::vector<double> get_state() const override;
     void stop() const override;
     bool moving() const override;
     bool move(const Trajectory& trajectory) const override;

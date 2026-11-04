@@ -9,7 +9,7 @@ function config()
     }
 end
 
-function get_axis_positions()
+function get_state()
    local joints = epics.get(P .. "Receive:Joints")
    for i, joint in ipairs(joints) do
        joints[i] = math.rad(joint)

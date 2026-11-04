@@ -5,13 +5,15 @@
 
 #include "trajectory.hpp"
 
+/// \brief Stores configuration information needed to build
+/// the MPLE system model.
 struct MpleModelConfig {
     std::string urdf_path;
     std::string base_frame;
     std::string ee_frame;
 };
 
-/// \brief Abstract base class for implementing a robot specific adapter for mple
+/// \brief Abstract base class for implementing a system specific adapter for MPLE
 class MpleAdapter {
   public:
     virtual ~MpleAdapter() = default;
@@ -19,13 +21,8 @@ class MpleAdapter {
     /// \brief Gets all the needed information about the system
     virtual MpleModelConfig config() = 0;
 
-    /// \brief Gets the current joint positions
-    /// \return vector of joint positions
-    virtual std::vector<double> get_axis_positions() const = 0;
-
-    /// \brief Gets the current pose of the tool center point (TCP) in 3D space
-    /// \return vector of the current pose (x,y,z,rx,ry,rz)
-    virtual std::vector<double> get_tcp_pose() const = 0;
+    /// \brief Gets the current system state (e.g. joint positions, etc.)
+    virtual std::vector<double> get_state() const = 0;
 
     /// \brief Stops all active motion of the system
     virtual void stop() const = 0;
@@ -38,21 +35,19 @@ class MpleAdapter {
 
     /// \brief Computes forward kinematics for the system
     ///
-    /// Computes the TCP pose resulting from the given joint angles.
-    /// \todo TODO: This method must compute FK itself. Base classes can optionally override this,
-    /// however if they do not and choose to call it here, this method must know how to compute
-    /// FK from the system geometry, likely via URDF or DH parameters.
-    virtual std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const {
+    /// Computes the forward kinematics from the given state vector.
+    /// If this method is not overriden but the derived class,
+    /// higher layers (MpleDriver) must provide FK
+    virtual std::optional<std::vector<double>> fk(const std::vector<double>& state) const {
         return std::nullopt;
     };
 
     /// \brief Computes inverse kinematics for the system
     ///
-    /// Computes the joint angles required to achieve the requested TCP pose.
-    /// \todo TODO: This method must compute IK itself. Base classes can optionally override this,
-    /// however if they do not and choose to call it directly, this method must know how to compute
-    /// IK from the system geometry, likely via URDF or DH parameters.
-    virtual std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const {
+    /// Computes the inverse kinematics from the given pose.
+    /// If this method is not overriden but the derived class,
+    /// higher layers (MpleDriver) must provide IK
+    virtual std::optional<std::vector<double>> ik(const std::vector<double>& pose) const {
         return std::nullopt;
     };
 };

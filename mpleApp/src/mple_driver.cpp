@@ -169,7 +169,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     std::vector<double> start(request->start.begin(), request->start.end());
     if (start.empty()) {
         std::cout << "No starting state provided, using current state as start\n";
-        start = adapter_->get_axis_positions();
+        start = adapter_->get_state();
     }
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
     PlanResult result = plan(start, goal, request->num_points);

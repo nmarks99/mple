@@ -37,17 +37,17 @@ MpleModelConfig LuaMpleAdapter::config() {
     return ret.value();
 }
 
-std::vector<double> LuaMpleAdapter::get_axis_positions() const {
+std::vector<double> LuaMpleAdapter::get_state() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto value = call_lua_method<std::vector<double>>("get_axis_positions");
+    auto value = call_lua_method<std::vector<double>>("get_state");
     return value.value_or(std::vector<double>{0.0});
 }
 
-// FIX:
-std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return {0.0, 0.0};
-}
+// // TODO: do we need something like this?
+// std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
+    // std::lock_guard<std::recursive_mutex> lock(mutex_);
+    // return {...};
+// }
 
 void LuaMpleAdapter::stop() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);

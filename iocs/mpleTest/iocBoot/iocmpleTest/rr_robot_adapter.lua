@@ -9,23 +9,29 @@ P = "mpleTest:"
 L1 = 300 / 1000.0
 L2 = 250 / 1000.0
 
-function num_axes()
-    return 2
+-- TODO:
+function config()
+    return {
+    }
 end
 
-function get_axis_positions()
+-- function num_axes()
+    -- return 2
+-- end
+
+function get_state()
     -- Get joint angles, convert from deg->rad
     local j1 = math.rad(epics.get(P .. "J1.VAL"))
     local j2 = math.rad(epics.get(P .. "J2.VAL"))
     return {j1, j2}
 end
 
-function get_tcp_pose()
-    -- Get TCP pose, convert from mm->m
-    local x = epics.get(P .. "X.VAL") / 1000.0
-    local y = epics.get(P .. "Y.VAL") / 1000.0
-    return {x, y};
-end
+-- function get_tcp_pose()
+    -- -- Get TCP pose, convert from mm->m
+    -- local x = epics.get(P .. "X.VAL") / 1000.0
+    -- local y = epics.get(P .. "Y.VAL") / 1000.0
+    -- return {x, y};
+-- end
 
 function moving()
     local rval = epics.get(P .. "Moving")
