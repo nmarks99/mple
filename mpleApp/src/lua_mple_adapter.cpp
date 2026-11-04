@@ -34,12 +34,22 @@ unsigned int LuaMpleAdapter::num_axes() const {
     return value.value_or(0);
 }
 
+MpleModelConfig LuaMpleAdapter::config() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto ret = call_lua_method<MpleModelConfig>("config");
+    if (!ret) {
+        throw std::runtime_error("Error calling lua config method");
+    }
+    return ret.value();
+}
+
 std::vector<double> LuaMpleAdapter::get_axis_positions() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto value = call_lua_method<std::vector<double>>("get_axis_positions");
     return value.value_or(std::vector<double>{0.0});
 }
 
+// FIX:
 std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     return {0.0, 0.0};

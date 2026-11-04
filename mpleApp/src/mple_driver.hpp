@@ -7,6 +7,11 @@
 #include <pvxs/server.h>
 #include <pvxs/sharedpv.h>
 
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/joint-configuration.hpp>
+#include <pinocchio/multibody.hpp>
+#include <pinocchio/parsers/urdf.hpp>
+
 #include "mple_adapter_registry.hpp"
 #include "collisions.hpp"
 
@@ -17,6 +22,8 @@ class MpleDriver {
   private:
     MpleAdapter* adapter_;
     CollisionWorld collision_world_ {};
+    pinocchio::Model model_;
+
 
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();

@@ -63,6 +63,15 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         throw std::runtime_error("Can't find adapter " + std::string(adapter_name));
     }
 
+    auto model_config = adapter_->config();
+    try {
+        pinocchio::urdf::buildModel(model_config.urdf_path, model_);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to build system model from URDF: " << e.what() << std::endl;
+        std::cerr << "MPLE aborting\n";
+        return;
+    }
+
     if (!obstacles_file.empty()) {
         printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
         collision_world_.add_from_json(obstacles_file);
@@ -226,7 +235,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
-    auto request = FKRequest::build(request_value, adapter_->num_axes());
+    auto request = FKRequest::build(request_value, model_.nv);
 
     if (!request) {
         printf("Failed to build FKRequest\n");
@@ -270,7 +279,7 @@ void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * adapter_->num_axes());
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * model_.nv);
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         auto joints = adapter_->ik(wp);

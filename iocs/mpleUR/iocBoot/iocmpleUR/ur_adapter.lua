@@ -2,6 +2,7 @@ local epics = require("epics")
 local osi = require("osi")
 
 function config()
+    -- TODO: what should this structure look like?
     return MPLE .. "/description/ur5e.urdf"
 end
 

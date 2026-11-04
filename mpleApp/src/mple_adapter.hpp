@@ -1,19 +1,24 @@
 #pragma once
 #include <vector>
 #include <optional>
+#include <string>
 
 #include "trajectory.hpp"
+
+struct MpleModelConfig {
+    std::string urdf_path;
+};
 
 /// \brief Abstract base class for implementing a robot specific adapter for mple
 class MpleAdapter {
   public:
     virtual ~MpleAdapter() = default;
 
-    // TODO:
-    // virtual ? get_joint_limits() const = 0;
-
     /// \brief Gets the number of axes in the system
     virtual unsigned int num_axes() const = 0;
+
+    /// \brief Gets all the needed information about the system
+    virtual MpleModelConfig config() = 0;
 
     /// \brief Gets the current joint positions
     /// \return vector of joint positions

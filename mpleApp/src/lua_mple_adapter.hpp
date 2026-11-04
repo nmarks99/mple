@@ -17,6 +17,7 @@ class LuaMpleAdapter : public MpleAdapter {
     unsigned int num_axes() const override;
     std::vector<double> get_axis_positions() const override;
     std::vector<double> get_tcp_pose() const override;
+    MpleModelConfig config() override;
     void stop() const override;
     bool moving() const override;
     bool move(const Trajectory& trajectory) const override;
@@ -27,7 +28,7 @@ class LuaMpleAdapter : public MpleAdapter {
     lua_State* lua_state_;
     mutable std::recursive_mutex mutex_;
 
-    std::vector<double> extract_table_to_vector(lua_State* L) const {
+    std::vector<double> lua_table_to_vector_double(lua_State* L) const {
         if (!lua_istable(L, -1)) {
             throw std::runtime_error("Top of stack is not a table.");
         }
@@ -150,9 +151,8 @@ class LuaMpleAdapter : public MpleAdapter {
                 value = lua_tonumber(lua_state_, -1);
             } else {
                 lua_pop(lua_state_, 1);
-                std::cerr << std::string(fn_name) + " must return an integer, but doesn't\n";
+                std::cerr << std::string(fn_name) + " must return a number, but doesn't\n";
                 return std::nullopt;
-                // throw std::runtime_error(std::string(fn_name) + " must return an integer, but doesn't");
             }
         }
 
@@ -165,7 +165,8 @@ class LuaMpleAdapter : public MpleAdapter {
 
             // Checks that the return type is compatable with T
             if (return_type == LUA_TTABLE) {
-                value = extract_table_to_vector(lua_state_);
+                // TODO: ensure this succeeds
+                value = lua_table_to_vector_double(lua_state_);
             } else {
                 lua_pop(lua_state_, 1);
                 // nil means generally that IK failed, otherwise perhaps user's lua method is just
@@ -177,8 +178,27 @@ class LuaMpleAdapter : public MpleAdapter {
             }
         }
 
+        else if constexpr (std::is_same_v<T, MpleModelConfig>) {
+            if (num_args > 0) {
+                return std::nullopt;
+            }
+
+            // Call the function
+            lua_pcall(lua_state_, num_args, 1, 0);
+            int return_type = lua_type(lua_state_, -1);
+
+            // Checks that the return type is compatable with T
+            if (return_type == LUA_TSTRING) {
+                auto str = lua_tostring(lua_state_, -1);
+                value = MpleModelConfig{str};
+            } else {
+                lua_pop(lua_state_, 1);
+                std::cerr << std::string(fn_name) + " must return a string, but doesn't\n";
+                return std::nullopt;
+            }
+        }
+
         lua_pop(lua_state_, 1);
         return value;
-
     }
 };

@@ -32,6 +32,8 @@ mple_SYS_LIBS += boost_serialization
 mple_LIBS += asyn
 mple_LIBS += lua
 mple_LIBS += pvxs
+mple_LIBS += pinocchio_default
+mple_LIBS += pinocchio_parsers
 mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
