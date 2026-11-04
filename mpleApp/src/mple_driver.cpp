@@ -69,6 +69,16 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     auto model_config = adapter_->config();
     try {
         pinocchio::urdf::buildModel(model_config.urdf_path, model_);
+        if (!model_.existFrame(model_config.base_frame, pinocchio::BODY)) {
+            throw std::runtime_error("Base frame not found: " + model_config.base_frame);
+        }
+        if (!model_.existFrame(model_config.ee_frame, pinocchio::BODY)) {
+            throw std::runtime_error("End-effector frame not found: " + model_config.ee_frame);
+        }
+        state_dim_ = static_cast<size_t>(model_.nv);
+        model_data_ = pinocchio::Data(model_);
+        base_frame_id_ = model_.getFrameId(model_config.base_frame, pinocchio::BODY);
+        ee_frame_id_ = model_.getFrameId(model_config.ee_frame, pinocchio::BODY);
     } catch (const std::exception& e) {
         std::cerr << "Failed to build system model from URDF: " << e.what() << std::endl;
         std::cerr << "MPLE aborting\n";
@@ -154,8 +164,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     PlanResponse response;
-    const auto njoints = adapter_->num_axes();
-    auto request = PlanRequest::build(request_value, adapter_->num_axes());
+    auto request = PlanRequest::build(request_value, state_dim_);
 
     if (!request) {
         printf("Failed to build PlanRequest\n");
@@ -211,7 +220,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
 
     const unsigned int total_points = request->num_points + 2;
-    response.trajectory_flat.resize(total_points * njoints);
+    response.trajectory_flat.resize(total_points * state_dim_);
     path.interpolate(total_points);
 
     constexpr double two_pi = 6.28318530717958647692;
@@ -225,8 +234,8 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         const double wrappedQ2 = state->as<ob::SO2StateSpace::StateType>(1)->value;
         const double q1 = previousQ1 + std::remainder(wrappedQ1 - previousQ1, two_pi);
         const double q2 = previousQ2 + std::remainder(wrappedQ2 - previousQ2, two_pi);
-        response.trajectory_flat.at(i * njoints) = q1;
-        response.trajectory_flat.at(i * njoints + 1) = q2;
+        response.trajectory_flat.at(i * state_dim_) = q1;
+        response.trajectory_flat.at(i * state_dim_ + 1) = q2;
         previousQ1 = q1;
         previousQ2 = q2;
     }
@@ -239,7 +248,7 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
-    auto request = FKRequest::build(request_value, model_.nv);
+    auto request = FKRequest::build(request_value, state_dim_);
 
     if (!request) {
         printf("Failed to build FKRequest\n");
@@ -252,17 +261,42 @@ void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     response.poses_flat.resize(request->joints.size() * 6);
     size_t ind = 0;
     for (auto& wp : request->joints) {
-        auto joints = adapter_->fk(wp);
-        if (!joints) {
+        auto pose = adapter_->fk(wp);
+        if (!pose) {
+            if (wp.size() != static_cast<size_t>(model_.nq)) {
+                response.valid = false;
+                response.description = "MPLE FK requires " + std::to_string(model_.nq)
+                    + " configuration values, but received " + std::to_string(wp.size());
+                op->reply(response.to_value());
+                return;
+            }
+
+            const Eigen::Map<const Eigen::VectorXd> q(wp.data(), wp.size());
+            pinocchio::SE3 ee_pose;
+            {
+                std::lock_guard<std::mutex> lock(model_mutex_);
+                pinocchio::framesForwardKinematics(model_, model_data_, q);
+                ee_pose = model_data_.oMf[base_frame_id_].inverse()
+                    * model_data_.oMf[ee_frame_id_];
+            }
+
+            const Eigen::Vector3d rpy = pinocchio::rpy::matrixToRpy(ee_pose.rotation());
+            pose = std::vector<double>{
+                ee_pose.translation().x(), ee_pose.translation().y(), ee_pose.translation().z(),
+                rpy.x(), rpy.y(), rpy.z(),
+            };
+        }
+
+        if (pose->size() != 6) {
             response.valid = false;
-            auto wp_string = vector_to_string(wp);
-            response.description = "Forward kinematics failed for joint angles " + vector_to_string(wp).value_or("(?)");
+            response.description = "Forward kinematics must return six pose values";
             op->reply(response.to_value());
             return;
         }
-        for (const auto& j : *joints) {
-            response.poses_flat[ind] = j;
-            ind += 1;
+
+        for (const double value : *pose) {
+            response.poses_flat[ind] = value;
+            ++ind;
         }
     }
 
@@ -308,7 +342,7 @@ void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
 void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     ExecuteResponse response;
-    auto request = ExecuteRequest::build(request_value, adapter_);
+    auto request = ExecuteRequest::build(request_value, state_dim_);
 
     if (!request) {
         response.error_code = -1;
@@ -394,7 +428,7 @@ void MpleDriver::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     ValidateResponse response;
-    auto request = ValidateRequest::build(request_value, adapter_);
+    auto request = ValidateRequest::build(request_value, state_dim_);
 
     if (!request) {
         response.valid = false;

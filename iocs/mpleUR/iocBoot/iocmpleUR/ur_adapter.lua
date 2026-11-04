@@ -3,12 +3,10 @@ local osi = require("osi")
 
 function config()
     return {
-        urdf = MPLE .. "/description/ur5e.urdf"
+        urdf = MPLE .. "/description/ur5e.urdf",
+        base_frame = "base",
+        ee_frame = "tool0"
     }
-end
-
-function num_axes()
-    return 6
 end
 
 function get_axis_positions()

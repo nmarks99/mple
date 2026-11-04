@@ -28,12 +28,6 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path, const char* macros) {
     // auto config = call_lua_method<SystemModel>("config");
 }
 
-unsigned int LuaMpleAdapter::num_axes() const {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto value = call_lua_method<int>("num_axes");
-    return value.value_or(0);
-}
-
 MpleModelConfig LuaMpleAdapter::config() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<MpleModelConfig>("config");
@@ -99,7 +93,8 @@ std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>&
 
     auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
     if (value) {
-        if (value->size() != static_cast<size_t>(num_axes()))  {
+        // TODO: fix hardcoded 6
+        if (value->size() != static_cast<size_t>(6))  {
             throw std::runtime_error("Returned array from ik must be equal to the number of joints");
         }
     } else {

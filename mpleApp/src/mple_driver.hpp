@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <optional>
 #include <pvxs/iochooks.h>
 #include <pvxs/nt.h>
@@ -9,6 +10,7 @@
 
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
+#include <pinocchio/math.hpp>
 #include <pinocchio/multibody.hpp>
 #include <pinocchio/parsers/urdf.hpp>
 
@@ -29,6 +31,11 @@ class MpleDriver {
     MpleAdapter* adapter_;
     CollisionWorld collision_world_ {};
     pinocchio::Model model_;
+    pinocchio::Data model_data_;
+    pinocchio::FrameIndex base_frame_id_;
+    pinocchio::FrameIndex ee_frame_id_;
+    std::mutex model_mutex_;
+    size_t state_dim_ = 0;
 
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
@@ -92,9 +99,9 @@ class MpleDriver {
 
         }
 
-        static std::optional<ValidateRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
+        static std::optional<ValidateRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
-                auto validate_req = ValidateRequest(value, adapter->num_axes());
+                auto validate_req = ValidateRequest(value, state_dims);
                 if (validate_req.request_valid_) {
                     return validate_req;
                 } else {
@@ -163,9 +170,9 @@ class MpleDriver {
             }
         }
 
-        static std::optional<ExecuteRequest> build(pvxs::Value& value, MpleAdapter* adapter) {
+        static std::optional<ExecuteRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
-                return ExecuteRequest(value, adapter->num_axes());
+                return ExecuteRequest(value, state_dims);
             } catch (...) {
             }
             return std::nullopt;
@@ -223,9 +230,9 @@ class MpleDriver {
         pvxs::shared_array<const double> goal = {};
         unsigned int num_points = 0;
 
-        static std::optional<PlanRequest> build(pvxs::Value& value, unsigned int num_joints) {
+        static std::optional<PlanRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
-                auto plan_req = PlanRequest(value, num_joints);
+                auto plan_req = PlanRequest(value, state_dims);
                 if (plan_req.request_valid_) {
                     return plan_req;
                 } else {
@@ -285,9 +292,9 @@ class MpleDriver {
         pvxs::shared_array<const double> joints_flat = {};
         std::vector<std::vector<double>> joints = {};
 
-        static std::optional<FKRequest> build(pvxs::Value& value, unsigned int num_joints) {
+        static std::optional<FKRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
-                auto fk_req = FKRequest(value, num_joints);
+                auto fk_req = FKRequest(value, state_dims);
                 if (fk_req.request_valid_) {
                     return fk_req;
                 } else {

@@ -7,15 +7,14 @@
 
 struct MpleModelConfig {
     std::string urdf_path;
+    std::string base_frame;
+    std::string ee_frame;
 };
 
 /// \brief Abstract base class for implementing a robot specific adapter for mple
 class MpleAdapter {
   public:
     virtual ~MpleAdapter() = default;
-
-    /// \brief Gets the number of axes in the system
-    virtual unsigned int num_axes() const = 0;
 
     /// \brief Gets all the needed information about the system
     virtual MpleModelConfig config() = 0;
@@ -44,9 +43,6 @@ class MpleAdapter {
     /// however if they do not and choose to call it here, this method must know how to compute
     /// FK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const {
-        if (joint_angles.size() != static_cast<size_t>(num_axes())) {
-            return std::nullopt;
-        }
         return std::nullopt;
     };
 
@@ -57,9 +53,6 @@ class MpleAdapter {
     /// however if they do not and choose to call it directly, this method must know how to compute
     /// IK from the system geometry, likely via URDF or DH parameters.
     virtual std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const {
-        if (tcp_pose.size() != static_cast<size_t>(num_axes())) {
-            return std::nullopt;
-        }
         return std::nullopt;
     };
 };

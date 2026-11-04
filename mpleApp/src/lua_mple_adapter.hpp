@@ -14,7 +14,6 @@ extern "C" {
 class LuaMpleAdapter : public MpleAdapter {
   public:
     LuaMpleAdapter(const char* script_path, const char* macros);
-    unsigned int num_axes() const override;
     std::vector<double> get_axis_positions() const override;
     std::vector<double> get_tcp_pose() const override;
     MpleModelConfig config() override;
@@ -52,6 +51,40 @@ class LuaMpleAdapter : public MpleAdapter {
         }
 
         return result;
+    }
+
+    MpleModelConfig lua_table_to_mple_model_config(lua_State* L) const {
+        if (!lua_istable(L, -1)) {
+            throw std::runtime_error("Top of stack is not a table");
+        }
+
+        MpleModelConfig config;
+
+        lua_getfield(L, -1, "urdf");
+        if (lua_type(L, -1) != LUA_TSTRING) {
+            lua_pop(L, 1);
+            throw std::runtime_error("Model configuration field 'urdf' must be a string");
+        }
+        config.urdf_path = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "base_frame");
+        if (lua_type(L, -1) != LUA_TSTRING) {
+            lua_pop(L, 1);
+            throw std::runtime_error("Model configuration field 'base_frame' must be a string");
+        }
+        config.base_frame = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "ee_frame");
+        if (lua_type(L, -1) != LUA_TSTRING) {
+            lua_pop(L, 1);
+            throw std::runtime_error("Model configuration field 'ee_frame' must be a string");
+        }
+        config.ee_frame = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        return config;
     }
 
     template <typename T>
@@ -105,7 +138,6 @@ class LuaMpleAdapter : public MpleAdapter {
         // Check that the function exists
         int result = lua_getglobal(lua_state_, fn_name);
         if (result != LUA_TFUNCTION) {
-            std::cout << "Can't find function " << fn_name << std::endl;
             lua_pop(lua_state_, 1);
             return std::nullopt;
         }
@@ -180,34 +212,24 @@ class LuaMpleAdapter : public MpleAdapter {
 
         // TODO: support simple (lua only/non-URDF) configuration
         else if constexpr (std::is_same_v<T, MpleModelConfig>) {
-            if (num_args > 0) {
+            static_assert(num_args == 0);
+
+            const int status = lua_pcall(lua_state_, 0, 1, 0);
+            if (status != LUA_OK) {
+                const char* error = lua_tostring(lua_state_, -1);
+                std::cerr << "Error calling " << fn_name << ": "
+                          << (error ? error : "unknown Lua error") << '\n';
+                lua_pop(lua_state_, 1);
                 return std::nullopt;
             }
 
-            // Call the function
-            lua_pcall(lua_state_, num_args, 1, 0);
-            int return_type = lua_type(lua_state_, -1);
-
-            // Checks that the return type is compatable with T
-            if (return_type == LUA_TTABLE) {
-                if (!lua_istable(lua_state_, -1)) {
-                    throw std::runtime_error("Top of stack is not a table.");
-                }
-                lua_getfield(lua_state_, -1, "urdf");
-                if (lua_type(lua_state_, -1) != LUA_TSTRING) {
-                    lua_pop(lua_state_, 1);
-                    throw std::runtime_error("Model configuration field 'urdf' must be a string");
-                }
-
-                MpleModelConfig model_config;
-                model_config.urdf_path = lua_tostring(lua_state_, -1);
+            if (!lua_istable(lua_state_, -1)) {
+                std::cerr << fn_name << " must return a table\n";
                 lua_pop(lua_state_, 1);
-                value = model_config;
-            } else {
-                lua_pop(lua_state_, 1);
-                std::cerr << std::string(fn_name) + " must return a table, but doesn't\n";
                 return std::nullopt;
             }
+
+            value = lua_table_to_mple_model_config(lua_state_);
         }
 
         lua_pop(lua_state_, 1);
