@@ -16,6 +16,6 @@ git clone --recurse-submodules https://github.com/nmarks99/mple.git
 # ...or if already cloned without submodules, run:
 # git submodule update --init --recursive
 
-# Edit mple/configure/CONFIG_SITE.local to point to mple-support, then
+# Set MPLE_SUPPORT=/path/to/mple-support in mple/configure/CONFIG_SITE.local, then
 make
 ```

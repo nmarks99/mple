@@ -4,7 +4,7 @@ import numpy as np
 def main():
     mple = Mple("mpleTest:mple:")
 
-    result = mple.plan([np.pi/2, np.pi/2], num_points=10)
+    result = mple.plan([np.pi/2, np.pi/2])
     print(result)
     if (result["valid"]):
         traj = np.asarray(result["trajectory"]).reshape(-1, 2)

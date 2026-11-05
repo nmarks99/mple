@@ -37,12 +37,13 @@ testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
 
 USR_CPPFLAGS += -DMPLE_TEST_URDF_PATH=\"$(abspath $(TOP)/description/ur5e.urdf)\"
-TESTPROD_HOST += testPinocchio
-testPinocchio_SRCS += test_pinocchio.cpp
-testPinocchio_LIBS += Com
-testPinocchio_LIBS += pinocchio_parsers
-testPinocchio_LIBS += pinocchio_default
-TESTS += testPinocchio
+TESTPROD_HOST += testFK
+testFK_SRCS += test_fk.cpp
+testFK_SRCS += kinematics.cpp
+testFK_LIBS += Com
+testFK_LIBS += pinocchio_parsers
+testFK_LIBS += pinocchio_default
+TESTS += testFK
 
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 

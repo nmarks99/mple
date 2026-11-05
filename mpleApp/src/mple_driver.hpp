@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <mutex>
 #include <optional>
 #include <pvxs/iochooks.h>
 #include <pvxs/nt.h>
@@ -15,13 +14,8 @@
 #include <pinocchio/parsers/urdf.hpp>
 
 #include "mple_adapter_registry.hpp"
+#include "mple_system_model.hpp"
 #include "collisions.hpp"
-
-// TODO:
-// struct MpleSystemModel {
-    // std::optional<pinocchio::Model> model;
-    // std::optional<SimpleModel> model;
-// };
 
 class MpleDriver {
   public:
@@ -30,12 +24,7 @@ class MpleDriver {
   private:
     MpleAdapter* adapter_;
     CollisionWorld collision_world_ {};
-    pinocchio::Model model_;
-    pinocchio::Data model_data_;
-    pinocchio::FrameIndex base_frame_id_;
-    pinocchio::FrameIndex ee_frame_id_;
-    std::mutex model_mutex_;
-    size_t state_dim_ = 0;
+    MpleSystemModel system_;
 
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
@@ -210,8 +199,7 @@ class MpleDriver {
       public:
         PlanRequest(pvxs::Value& value, unsigned int num_joints):
             start(value["start"].as<pvxs::shared_array<const double>>()),
-            goal(value["goal"].as<pvxs::shared_array<const double>>()),
-            num_points(value["num_points"].as<unsigned int>()) {
+            goal(value["goal"].as<pvxs::shared_array<const double>>()) {
             const size_t start_size = start.size();
             const size_t goal_size = goal.size();
             if (goal_size != num_joints) {
@@ -228,7 +216,6 @@ class MpleDriver {
 
         pvxs::shared_array<const double> start = {};
         pvxs::shared_array<const double> goal = {};
-        unsigned int num_points = 0;
 
         static std::optional<PlanRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
@@ -331,6 +318,7 @@ class MpleDriver {
         }
     };
 
+
     struct IKRequest {
       public:
         IKRequest(pvxs::Value& value)
@@ -392,21 +380,17 @@ class MpleDriver {
         }
     };
 
-    void stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& put_value);
+    std::optional<std::string> check_state_collision(const std::vector<double>& state);
 
-    void validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value);
+    void stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& put_value);
 
-    void plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value);
+    void validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 
-    void execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value);
+    void plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 
-    void ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value);
+    void execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 
-    void fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value);
+    void ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
+
+    void fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 };

@@ -5,10 +5,16 @@ from scipy.spatial.transform import Rotation
 
 PREFIX = "mpleUR:"
 def main():
+    print("construction...")
     mple = Mple(PREFIX+"mple:")
+    print("done")
 
+    print("getting joints...")
     joints = np.radians(caget(PREFIX + "Receive:Joints"))
+    print(f"current: {joints}")
+    print("done")
 
+    print("FK...")
     fk_result = mple.compute_fk(joints)
     if (fk_result["valid"]):
         mple_pose = np.array(fk_result["poses"], dtype=float, copy=True)
@@ -21,6 +27,7 @@ def main():
         print(f"From  IOC: {np.round(pose, 4)}")
     else:
         print(f"Forward kinematics failed: {fk_result['description']}")
+    print("done")
 
 if __name__ == "__main__":
     main()

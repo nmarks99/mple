@@ -9,7 +9,7 @@ def main():
     goal = caget(f"{PREFIX}Receive:Joints")
     goal += 5
     goal = np.radians(goal)
-    result = mple.plan(goal, num_points=10)
+    result = mple.plan(goal)
     print(result)
     if (result["valid"]):
         traj = np.array(result["trajectory"])

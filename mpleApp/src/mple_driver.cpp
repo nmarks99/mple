@@ -4,6 +4,7 @@
 #include "mple_driver.hpp"
 #include "planner.hpp"
 #include "trajectory.hpp"
+#include "kinematics.hpp"
 
 #include "iocsh.h"
 #include "epicsExport.h"
@@ -60,17 +61,20 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     // Get information about the system and build the model
     auto model_config = adapter_->config();
     try {
-        pinocchio::urdf::buildModel(model_config.urdf_path, model_);
-        if (!model_.existFrame(model_config.base_frame, pinocchio::BODY)) {
+        pinocchio::urdf::buildModel(model_config.urdf_path, system_.model);
+        if (!system_.model.existFrame(model_config.base_frame, pinocchio::BODY)) {
             throw std::runtime_error("Base frame not found: " + model_config.base_frame);
         }
-        if (!model_.existFrame(model_config.ee_frame, pinocchio::BODY)) {
+        if (!system_.model.existFrame(model_config.ee_frame, pinocchio::BODY)) {
             throw std::runtime_error("End-effector frame not found: " + model_config.ee_frame);
         }
-        state_dim_ = static_cast<size_t>(model_.nv);
-        model_data_ = pinocchio::Data(model_);
-        base_frame_id_ = model_.getFrameId(model_config.base_frame, pinocchio::BODY);
-        ee_frame_id_ = model_.getFrameId(model_config.ee_frame, pinocchio::BODY);
+        if (system_.model.nq != system_.model.nv) {
+            throw std::runtime_error("MPLE requires Pinocchio models with nq == nv");
+        }
+        system_.state_dim = static_cast<size_t>(system_.model.nv);
+        system_.data = pinocchio::Data(system_.model);
+        system_.base_frame_id = system_.model.getFrameId(model_config.base_frame, pinocchio::BODY);
+        system_.ee_frame_id = system_.model.getFrameId(model_config.ee_frame, pinocchio::BODY);
     } catch (const std::exception& e) {
         std::cerr << "Failed to build system model from URDF: " << e.what() << std::endl;
         std::cerr << "MPLE aborting\n";
@@ -97,7 +101,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     stop_pv_.onPut([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& value) {
-        stop_callback(std::move(op), std::move(value));
+        stop_rpc_callback(std::move(op), std::move(value));
     });
     stop_pv_.open(stop_value_);
     pvxs::ioc::server().addPV(prefix + "Stop", stop_pv_);
@@ -106,7 +110,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     validate_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        validate_callback(std::move(op), std::move(request_value));
+        validate_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Validate", validate_pv_);
 
@@ -114,7 +118,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     execute_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        execute_callback(std::move(op), std::move(request_value));
+        execute_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
@@ -122,7 +126,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     plan_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        plan_callback(std::move(op), std::move(request_value));
+        plan_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Plan", plan_pv_);
 
@@ -130,7 +134,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     fk_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        fk_callback(std::move(op), std::move(request_value));
+        fk_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "ComputeFK", fk_pv_);
 
@@ -138,12 +142,24 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     ik_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
-        ik_callback(std::move(op), std::move(request_value));
+        ik_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
-void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+std::optional<std::string> MpleDriver::check_state_collision(
+    const std::vector<double>& state) {
+
+    auto pose = adapter_->fk(state);
+    if (!pose) {
+        pose = forward_kinematics(system_, state);
+    }
+
+    const Position position{pose->at(0), pose->at(1), pose->at(2)};
+    return collision_world_.check_point(position);
+}
+
+void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     auto expected = ExecutionState::Running;
     if (execution_state_.compare_exchange_strong(expected, ExecutionState::StopRequested)) {
@@ -152,11 +168,11 @@ void MpleDriver::stop_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply();
 }
 
-void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     PlanResponse response;
-    auto request = PlanRequest::build(request_value, state_dim_);
+    auto request = PlanRequest::build(request_value, system_.state_dim);
 
     if (!request) {
         printf("Failed to build PlanRequest\n");
@@ -172,7 +188,11 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         start = adapter_->get_state();
     }
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
-    PlanResult result = plan(start, goal, request->num_points);
+    PlanResult result = plan(
+        start, goal,
+        [this](const std::vector<double>& state) {
+            return !check_state_collision(state);
+        });
 
     response.valid = result.valid;
     response.description = std::move(result.description);
@@ -181,10 +201,10 @@ void MpleDriver::plan_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void MpleDriver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
-    auto request = FKRequest::build(request_value, state_dim_);
+    auto request = FKRequest::build(request_value, system_.state_dim);
 
     if (!request) {
         printf("Failed to build FKRequest\n");
@@ -199,28 +219,14 @@ void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     for (auto& wp : request->joints) {
         auto pose = adapter_->fk(wp);
         if (!pose) {
-            if (wp.size() != static_cast<size_t>(model_.nq)) {
+            if (wp.size() != static_cast<size_t>(system_.model.nq)) {
                 response.valid = false;
-                response.description = "MPLE FK requires " + std::to_string(model_.nq)
+                response.description = "MPLE FK requires " + std::to_string(system_.model.nq)
                     + " configuration values, but received " + std::to_string(wp.size());
                 op->reply(response.to_value());
                 return;
             }
-
-            const Eigen::Map<const Eigen::VectorXd> q(wp.data(), wp.size());
-            pinocchio::SE3 ee_pose;
-            {
-                std::lock_guard<std::mutex> lock(model_mutex_);
-                pinocchio::framesForwardKinematics(model_, model_data_, q);
-                ee_pose = model_data_.oMf[base_frame_id_].inverse()
-                    * model_data_.oMf[ee_frame_id_];
-            }
-
-            const Eigen::Vector3d rpy = pinocchio::rpy::matrixToRpy(ee_pose.rotation());
-            pose = std::vector<double>{
-                ee_pose.translation().x(), ee_pose.translation().y(), ee_pose.translation().z(),
-                rpy.x(), rpy.y(), rpy.z(),
-            };
+            pose = forward_kinematics(system_, wp);
         }
 
         if (pose->size() != 6) {
@@ -241,7 +247,7 @@ void MpleDriver::fk_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void MpleDriver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     IKResponse response;
     auto request = IKRequest::build(request_value);
@@ -253,7 +259,7 @@ void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * model_.nv);
+    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * system_.model.nv);
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         auto joints = adapter_->ik(wp);
@@ -275,10 +281,10 @@ void MpleDriver::ik_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void MpleDriver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     ExecuteResponse response;
-    auto request = ExecuteRequest::build(request_value, state_dim_);
+    auto request = ExecuteRequest::build(request_value, system_.state_dim);
 
     if (!request) {
         response.error_code = -1;
@@ -360,11 +366,11 @@ void MpleDriver::execute_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     ValidateResponse response;
-    auto request = ValidateRequest::build(request_value, state_dim_);
+    auto request = ValidateRequest::build(request_value, system_.state_dim);
 
     if (!request) {
         response.valid = false;
@@ -378,32 +384,24 @@ void MpleDriver::validate_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     // which waypoints were given to the Validate method
     std::optional<std::string> hit;
     if (!request->joint_waypoints.empty()) {
-        for (auto& wp : request->joint_waypoints) {
-            auto tcp_pose = adapter_->fk(wp);
-            if (!tcp_pose) {
-                printf("Adapter does not provide FK. mple must do it.\n");
-                // TODO: Compute FK here.
-                // Probably need URDF or DH params
+        for (const auto& wp : request->joint_waypoints) {
+            hit = check_state_collision(wp);
+            if (hit) {
                 break;
-            } else {
-                // TODO: check joint and workspace limits
-                Position p{tcp_pose->at(0), tcp_pose->at(1), tcp_pose->at(2)};
-                auto hit = collision_world_.check_point(p);
-                if (hit) { break; }
             }
         }
     } else if (!request->cartesian_waypoints.empty()) {
         for (auto& wp : request->cartesian_waypoints) {
             auto joints = adapter_->ik(wp);
             if (!joints) {
-                printf("Adapter does not provide IK (or it failed?). mple must do it.\n");
+                std::cerr << "Adapter does not provide IK (or it failed?). mple must do it.\n";
                 // TODO: Compute IK here
                 // Probably need URDF or DH params
                 break;
             } else {
                 // TODO: check joint and workspace limits
                 Position p{wp[0], wp[1], wp[2]};
-                auto hit = collision_world_.check_point(p);
+                hit = collision_world_.check_point(p);
                 if (hit) { break; }
             }
         }
