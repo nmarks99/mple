@@ -27,12 +27,12 @@ jobs:
       matrix:
         # Job names also name artifacts, character limitations apply
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-latest
             cmp: gcc
             configuration: default
             set: master
             base: "7.0"
-            name: "Base 7.0, Ub-24.04"
+            name: "Base 7.0, latest"
 
     steps:
       - uses: actions/checkout@v3
