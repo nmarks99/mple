@@ -27,7 +27,7 @@ jobs:
       matrix:
         # Job names also name artifacts, character limitations apply
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             cmp: gcc
             configuration: default
             set: master
