@@ -2,6 +2,9 @@
 
 Motion Planning Library for EPICS
 
+> [!WARNING]
+> This is a work in progress. Expect breaking changes at any time.
+
 ## Building
 
 `mple` depends on [mple-support](https://github.com/nmarks99/mple-support) which must be built first.

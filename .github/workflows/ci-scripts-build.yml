@@ -32,7 +32,7 @@ jobs:
             configuration: default
             set: master
             base: "7.0"
-            name: "Base 7.0, Ub-latest"
+            name: "Base 7.0, Ub-24.04"
 
     steps:
       - uses: actions/checkout@v3
