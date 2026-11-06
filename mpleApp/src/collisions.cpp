@@ -48,6 +48,100 @@ CollisionObject CollisionObject::from_quicktype(const std::string& name, quickty
     };
 }
 
+CollisionObject CollisionObject::from_pvxs_value(const pvxs::Value& value) {
+
+    CollisionObject obj;
+
+    obj.name = value["name"].as<std::string>();
+
+    auto shape_type = value["type"].as<std::string>();
+    if (shape_type == "sphere") {
+        Sphere sphere;
+        sphere.radius = value["dimensions"].as<pvxs::shared_array<const double>>()[0];
+        obj.shapes.push_back(sphere);
+        auto pos = value["position"].as<pvxs::shared_array<const double>>();
+        auto ori = value["orientation"].as<pvxs::shared_array<const double>>();
+        Pose pose;
+        pose.position.x = pos[0];
+        pose.position.y = pos[1];
+        pose.position.z = pos[2];
+        pose.orientation.rx = ori[0];
+        pose.orientation.ry = ori[1];
+        pose.orientation.rz = ori[2];
+        obj.pose = pose;
+    } else {
+        // TODO: implement for other shapes
+        throw std::runtime_error("unsupported shape type" + shape_type);
+    }
+
+    return obj;
+}
+
+pvxs::Value CollisionObject::to_pvxs_value() const {
+    namespace M = pvxs::members;
+    auto top = pvxs::TypeDef(pvxs::TypeCode::Struct, {
+        M::String("name"),
+        M::String("type"),
+        M::Float64A("position"),
+        M::Float64A("orientation"),
+        M::Float64A("shape_position"),
+        M::Float64A("shape_orientation"),
+        M::Float64A("dimensions"),
+    }).create();
+
+    top["name"] = name;
+    std::visit([&top, this](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, Sphere>) {
+            top["type"] = "sphere";
+            top["position"] = pvxs::shared_array<const double>{
+                this->pose.position.x,
+                this->pose.position.y,
+                this->pose.position.z
+            };
+            top["orientation"] = pvxs::shared_array<const double>{
+                this->pose.orientation.rx,
+                this->pose.orientation.ry,
+                this->pose.orientation.rz
+            };
+            top["dimensions"] = pvxs::shared_array<const double>{arg.radius};
+        } else if constexpr (std::is_same_v<T, Box>) {
+            top["type"] = "box";
+        } else if constexpr (std::is_same_v<T, Cylinder>) {
+            top["type"] = "cylinder";
+        }
+    }, shapes[0]);
+
+    return top;
+}
+
+pvxs::Value CollisionWorld::to_pvxs_value() const {
+    namespace M = pvxs::members;
+    auto top = pvxs::TypeDef(pvxs::TypeCode::Struct, {
+        M::StructA("obstacles", {
+            M::String("name"),
+            M::String("type"),
+            M::Float64A("position"),
+            M::Float64A("orientation"),
+            M::Float64A("shape_position"),
+            M::Float64A("shape_orientation"),
+            M::Float64A("dimensions"),
+        }),
+        M::Int32("revision")
+    }).create();
+
+    pvxs::shared_array<pvxs::Value> obstacles(this->objects.size());
+    size_t i = 0;
+    for (const auto& [name, obj] : this->objects) {
+        obstacles[i] = top["obstacles"].allocMember();
+        obstacles[i] = obj.to_pvxs_value();
+        ++i;
+    }
+    top["obstacles"] = obstacles.freeze();
+
+    return top;
+}
+
 CollisionWorld CollisionWorld::from_json(std::istream& input) {
     using json = nlohmann::json;
     CollisionWorld world{};

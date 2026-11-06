@@ -29,6 +29,9 @@ class MpleDriver {
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
+    pvxs::Value obstacles_value_;
+    pvxs::server::SharedPV obstacles_pv_ = pvxs::server::SharedPV::buildReadonly();
+
     enum class ExecutionState {
         Idle,
         Running,

@@ -8,6 +8,10 @@
 #include <cassert>
 #include "obstacles_schema.hpp"
 
+#include <pvxs/nt.h>
+#include <pvxs/server.h>
+#include <pvxs/sharedpv.h>
+
 // All lengths are in meters and angles in radians
 
 // 3D Cartesian coordinates
@@ -59,16 +63,24 @@ struct Cylinder {
 
 // A collision object made up of one or more primitive shapes
 struct CollisionObject {
+    static CollisionObject from_quicktype(const std::string& name, quicktype::ObstacleValue ob);
+    static CollisionObject from_pvxs_value(const pvxs::Value& value);
+
     std::string name;
     Pose pose;                                               // CollisionObject pose in world frame
     std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
     std::vector<Pose> shape_poses;                           // Pose of each shape in CollisionObject frame
-    static CollisionObject from_quicktype(const std::string& name, quicktype::ObstacleValue ob);
+
+    pvxs::Value to_pvxs_value() const;
 };
+
+
 
 struct CollisionWorld {
     static CollisionWorld from_json(std::istream& input);
     static CollisionWorld from_json(const std::string& file_path);
+
+    pvxs::Value to_pvxs_value() const;
 
     // Adds an object to the world. If an object with the same name is already
     // present, it is overwritten.

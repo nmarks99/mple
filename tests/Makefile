@@ -27,12 +27,14 @@ TESTS += testTrajectory
 TESTPROD_HOST += testCollisions
 testCollisions_SRCS += test_collisions.cpp
 testCollisions_SRCS += collisions.cpp
+testCollisions_LIBS += pvxs
 testCollisions_LIBS += Com
 TESTS += testCollisions
 
 TESTPROD_HOST += testCollisionsJson
 testCollisionsJson_SRCS += test_collisions_json.cpp
 testCollisionsJson_SRCS += collisions.cpp
+testCollisionsJson_LIBS += pvxs
 testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
 

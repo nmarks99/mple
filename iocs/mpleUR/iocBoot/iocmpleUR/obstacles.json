@@ -10,5 +10,18 @@
                 "dimensions": [0.075]
             }
         ]
+    },
+
+    "Ball2" : {
+        "pose" : {
+            "position" : [0.1, 0.4, 0.4],
+            "orientation" : [0, 0, 0]
+        },
+        "shapes" : [
+            {
+                "type" : "sphere",
+                "dimensions": [0.1]
+            }
+        ]
     }
 }
