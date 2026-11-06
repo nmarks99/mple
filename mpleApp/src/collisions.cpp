@@ -1,4 +1,6 @@
+#include <cstdint>
 #include <fstream>
+#include <type_traits>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <nlohmann/json.hpp>
@@ -48,6 +50,24 @@ CollisionObject CollisionObject::from_quicktype(const std::string& name, quickty
     };
 }
 
+pvxs::TypeDef obstacles_pva_type() {
+    namespace M = pvxs::members;
+    return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+        M::StructA("obstacles", {
+            M::String("name"),
+            M::String("type"),
+            M::Float64A("position"),
+            M::Float64A("orientation"),
+            M::Float64A("shape_position"),
+            M::Float64A("shape_orientation"),
+            M::Float64A("dimensions"),
+        }),
+        M::UInt64("revision")
+    });
+}
+
+// TODO: finish this, and use it in onPut method to convert the
+// received pvxs::Value to a CollisionObject
 CollisionObject CollisionObject::from_pvxs_value(const pvxs::Value& value) {
 
     CollisionObject obj;
@@ -74,70 +94,95 @@ CollisionObject CollisionObject::from_pvxs_value(const pvxs::Value& value) {
         throw std::runtime_error("unsupported shape type" + shape_type);
     }
 
+    Pose shape_pose{
+        Position{0.0, 0.0, 0.0},
+        Orientation{0.0, 0.0, 0.0}
+    };
+    auto shape_pos = value["shape_position"].as<pvxs::shared_array<const double>>();
+    if (!shape_pos.empty()) {
+        if (shape_pos.size() != 3) {
+            throw std::runtime_error("shape_position must contain three values");
+        }
+        shape_pose.position = {shape_pos[0], shape_pos[1], shape_pos[2]};
+    }
+    auto shape_ori = value["shape_orientation"].as<pvxs::shared_array<const double>>();
+    if (!shape_ori.empty()) {
+        if (shape_ori.size() != 3) {
+            throw std::runtime_error("shape_orientation must contain three values");
+        }
+        shape_pose.orientation = {shape_ori[0], shape_ori[1], shape_ori[2]};
+    }
+    obj.shape_poses.push_back(shape_pose);
+
     return obj;
 }
 
-pvxs::Value CollisionObject::to_pvxs_value() const {
-    namespace M = pvxs::members;
-    auto top = pvxs::TypeDef(pvxs::TypeCode::Struct, {
-        M::String("name"),
-        M::String("type"),
-        M::Float64A("position"),
-        M::Float64A("orientation"),
-        M::Float64A("shape_position"),
-        M::Float64A("shape_orientation"),
-        M::Float64A("dimensions"),
-    }).create();
+void CollisionObject::to_pvxs_value(pvxs::Value& value) const {
+    if (shapes.size() != 1 || shape_poses.size() != 1) {
+        throw std::runtime_error("PVA obstacles require exactly one shape and one shape pose per object");
+    }
 
-    top["name"] = name;
-    std::visit([&top, this](auto&& arg) {
-        using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, Sphere>) {
-            top["type"] = "sphere";
-            top["position"] = pvxs::shared_array<const double>{
-                this->pose.position.x,
-                this->pose.position.y,
-                this->pose.position.z
-            };
-            top["orientation"] = pvxs::shared_array<const double>{
-                this->pose.orientation.rx,
-                this->pose.orientation.ry,
-                this->pose.orientation.rz
-            };
-            top["dimensions"] = pvxs::shared_array<const double>{arg.radius};
-        } else if constexpr (std::is_same_v<T, Box>) {
-            top["type"] = "box";
-        } else if constexpr (std::is_same_v<T, Cylinder>) {
-            top["type"] = "cylinder";
-        }
-    }, shapes[0]);
+    value["name"] = name;
+    value["position"] = pvxs::shared_array<const double>{
+        pose.position.x,
+        pose.position.y,
+        pose.position.z
+    };
+    value["orientation"] = pvxs::shared_array<const double>{
+        pose.orientation.rx,
+        pose.orientation.ry,
+        pose.orientation.rz
+    };
 
-    return top;
+    for (const auto& shape_pose : shape_poses) {
+        value["shape_position"] = pvxs::shared_array<const double>{
+            shape_pose.position.x,
+            shape_pose.position.y,
+            shape_pose.position.z
+        };
+        value["shape_orientation"] = pvxs::shared_array<const double>{
+            shape_pose.orientation.rx,
+            shape_pose.orientation.ry,
+            shape_pose.orientation.rz
+        };
+    }
+
+    for (const auto& shape : shapes) {
+        std::visit([&value](const auto& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, Sphere>) {
+                value["type"] = "sphere";
+                value["dimensions"] = pvxs::shared_array<const double>{arg.radius};
+            } else if constexpr (std::is_same_v<T, Box>) {
+                value["type"] = "box";
+                value["dimensions"] = pvxs::shared_array<const double>{
+                    arg.width,
+                    arg.height,
+                    arg.depth
+                };
+            } else if constexpr (std::is_same_v<T, Cylinder>) {
+                value["type"] = "cylinder";
+                value["dimensions"] = pvxs::shared_array<const double>{
+                    arg.radius,
+                    arg.height
+                };
+            }
+        }, shape);
+    }
 }
 
 pvxs::Value CollisionWorld::to_pvxs_value() const {
-    namespace M = pvxs::members;
-    auto top = pvxs::TypeDef(pvxs::TypeCode::Struct, {
-        M::StructA("obstacles", {
-            M::String("name"),
-            M::String("type"),
-            M::Float64A("position"),
-            M::Float64A("orientation"),
-            M::Float64A("shape_position"),
-            M::Float64A("shape_orientation"),
-            M::Float64A("dimensions"),
-        }),
-        M::Int32("revision")
-    }).create();
+    auto top = obstacles_pva_type().create();
 
     pvxs::shared_array<pvxs::Value> obstacles(this->objects.size());
     size_t i = 0;
     for (const auto& [name, obj] : this->objects) {
         obstacles[i] = top["obstacles"].allocMember();
-        obstacles[i] = obj.to_pvxs_value();
+        obj.to_pvxs_value(obstacles[i]);
         ++i;
     }
     top["obstacles"] = obstacles.freeze();
+    top["revision"] = uint64_t{0};
 
     return top;
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <istream>
 #include <optional>
 #include <string>
@@ -61,6 +62,8 @@ struct Cylinder {
     double height;
 };
 
+pvxs::TypeDef obstacles_pva_type();
+
 // A collision object made up of one or more primitive shapes
 struct CollisionObject {
     static CollisionObject from_quicktype(const std::string& name, quicktype::ObstacleValue ob);
@@ -71,10 +74,8 @@ struct CollisionObject {
     std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
     std::vector<Pose> shape_poses;                           // Pose of each shape in CollisionObject frame
 
-    pvxs::Value to_pvxs_value() const;
+    void to_pvxs_value(pvxs::Value& value) const;
 };
-
-
 
 struct CollisionWorld {
     static CollisionWorld from_json(std::istream& input);

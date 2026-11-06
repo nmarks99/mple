@@ -85,12 +85,12 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     if (!obstacles_file.empty()) {
         printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
         collision_world_.add_from_json(obstacles_file);
-    }
 
-    // Set initial value of obstacles PV from collision world
-    obstacles_value_ = collision_world_.to_pvxs_value();
-    obstacles_pv_.open(obstacles_value_);
-    pvxs::ioc::server().addPV(prefix + "Obstacles", obstacles_pv_);
+        // Set initial value of obstacles PV from collision world
+        obstacles_value_ = collision_world_.to_pvxs_value();
+        obstacles_pv_.open(obstacles_value_);
+        pvxs::ioc::server().addPV(prefix + "Obstacles", obstacles_pv_);
+    }
 
     // Create status PV
     namespace M = pvxs::members;
