@@ -4,6 +4,9 @@ from p4p import Value, Type
 from math import pi
 import numpy as np
 
+from mple.scene_objects import Pose, SceneObject, SceneObjects
+
+
 class Mple:
     def __init__(self, prefix: str, connection_timeout: float = 1.0):
         self.prefix = prefix
@@ -12,6 +15,26 @@ class Mple:
             self.ctxt.get(f"{prefix}Status", timeout=connection_timeout)
         except TimeoutError:
             print("Timed out waiting to connect. Is an IOC with MPLE running?")
+
+    def get_scene_objects(self, timeout: float = 5.0) -> SceneObjects:
+        value = self.ctxt.get(f"{self.prefix}SceneObjects", timeout=timeout)
+        objects = [
+            SceneObject(
+                name=obj["name"],
+                shape_type=obj["type"],
+                pose=Pose(
+                    position=tuple(obj["position"]),
+                    orientation=tuple(obj["orientation"]),
+                ),
+                shape_pose=Pose(
+                    position=tuple(obj["shape_position"]),
+                    orientation=tuple(obj["shape_orientation"]),
+                ),
+                dimensions=tuple(obj["dimensions"]),
+            )
+            for obj in value["objects"]
+        ]
+        return SceneObjects(objects=objects, revision=value["revision"])
 
     def validate(self, joint_waypoints) -> bool:
         ValidateMsg = Value(Type([
