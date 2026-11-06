@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-#include "collisions.hpp"
+#include "planning_scene.hpp"
 
 MAIN(testJson) {
     testPlan(5);
@@ -52,7 +52,7 @@ MAIN(testJson) {
     }
 }
 )json");
-    const auto world = CollisionWorld::from_json(input);
+    const auto world = PlanningScene::from_json(input);
 
     auto collision = world.check_point({0, 0, 0});
     testOk(!collision, "Miss at (0, 0, 0)");

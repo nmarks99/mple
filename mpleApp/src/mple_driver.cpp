@@ -50,7 +50,7 @@ std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
     return out;
 }
 
-MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& obstacles_file) {
+MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file) {
 
     // Find the adapter
     adapter_ = find_adapter(adapter_name);
@@ -81,15 +81,15 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         return;
     }
 
-    // Load obstacles file
-    if (!obstacles_file.empty()) {
-        printf("Loading obstacles from json file %s\n", obstacles_file.c_str());
-        collision_world_.add_from_json(obstacles_file);
+    // Load scene objects file
+    if (!scene_objects_file.empty()) {
+        printf("Loading scene objects from json file %s\n", scene_objects_file.c_str());
+        planning_scene_.add_from_json(scene_objects_file);
 
-        // Set initial value of obstacles PV from collision world
-        obstacles_value_ = collision_world_.to_pvxs_value();
-        obstacles_pv_.open(obstacles_value_);
-        pvxs::ioc::server().addPV(prefix + "Obstacles", obstacles_pv_);
+        // Set initial value of scene objects PV from planning scene
+        scene_objects_value_ = planning_scene_.to_pvxs_value();
+        scene_objects_pv_.open(scene_objects_value_);
+        pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
     }
 
     // Create status PV
@@ -162,7 +162,7 @@ std::optional<std::string> MpleDriver::check_state_collision(
     }
 
     const Position position{pose->at(0), pose->at(1), pose->at(2)};
-    return collision_world_.check_point(position);
+    return planning_scene_.check_point(position);
 }
 
 void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -407,7 +407,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
             } else {
                 // TODO: check joint and workspace limits
                 Position p{wp[0], wp[1], wp[2]};
-                hit = collision_world_.check_point(p);
+                hit = planning_scene_.check_point(p);
                 if (hit) { break; }
             }
         }
@@ -426,13 +426,13 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
 
 
 // register function for iocsh
-extern "C" void MpleDriverConfig(const char* adapter_name, const char* prefix, const char* obstacles_file) {
-    new MpleDriver(adapter_name, prefix, obstacles_file);
+extern "C" void MpleDriverConfig(const char* adapter_name, const char* prefix, const char* scene_objects_file) {
+    new MpleDriver(adapter_name, prefix, scene_objects_file);
 }
 
 static const iocshArg MpleDriverArg0 = {"Adapter name", iocshArgString};
 static const iocshArg MpleDriverArg1 = {"IOC prefix", iocshArgString};
-static const iocshArg MpleDriverArg2 = {"Obstacles json file", iocshArgString};
+static const iocshArg MpleDriverArg2 = {"Scene json file", iocshArgString};
 static const iocshArg* const MpleDriverArgs[3] = {&MpleDriverArg0, &MpleDriverArg1, &MpleDriverArg2};
 static const iocshFuncDef MpleDriverFuncDef = {"MpleConfig", 3, MpleDriverArgs};
 

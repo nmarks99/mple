@@ -15,22 +15,22 @@
 
 #include "mple_adapter_registry.hpp"
 #include "mple_system_model.hpp"
-#include "collisions.hpp"
+#include "planning_scene.hpp"
 
 class MpleDriver {
   public:
-    MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& obstacles_file);
+    MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file);
 
   private:
     MpleAdapter* adapter_;
-    CollisionWorld collision_world_ {};
+    PlanningScene planning_scene_ {};
     MpleSystemModel system_;
 
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
-    pvxs::Value obstacles_value_;
-    pvxs::server::SharedPV obstacles_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::Value scene_objects_value_;
+    pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     enum class ExecutionState {
         Idle,

@@ -4,9 +4,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <nlohmann/json.hpp>
-#include "collisions.hpp"
+#include "planning_scene.hpp"
 
-CollisionObject CollisionObject::from_quicktype(const std::string& name, quicktype::ObstacleValue ob) {
+SceneObject SceneObject::from_quicktype(const std::string& name, quicktype::SceneObjectValue ob) {
 
     std::vector<std::variant<Box, Sphere, Cylinder>> shapes;
     std::vector<Pose> shape_poses;
@@ -42,7 +42,7 @@ CollisionObject CollisionObject::from_quicktype(const std::string& name, quickty
         shape_poses.push_back(shape_pose);
     }
 
-    return CollisionObject {
+    return SceneObject {
         name,
         Pose{ Position(ob.pose.position), Orientation(ob.pose.orientation) },
         shapes,
@@ -50,10 +50,10 @@ CollisionObject CollisionObject::from_quicktype(const std::string& name, quickty
     };
 }
 
-pvxs::TypeDef obstacles_pva_type() {
+pvxs::TypeDef scene_objects_pva_type() {
     namespace M = pvxs::members;
     return pvxs::TypeDef(pvxs::TypeCode::Struct, {
-        M::StructA("obstacles", {
+        M::StructA("objects", {
             M::String("name"),
             M::String("type"),
             M::Float64A("position"),
@@ -67,10 +67,10 @@ pvxs::TypeDef obstacles_pva_type() {
 }
 
 // TODO: finish this, and use it in onPut method to convert the
-// received pvxs::Value to a CollisionObject
-CollisionObject CollisionObject::from_pvxs_value(const pvxs::Value& value) {
+// received pvxs::Value to a SceneObject
+SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
 
-    CollisionObject obj;
+    SceneObject obj;
 
     obj.name = value["name"].as<std::string>();
 
@@ -117,9 +117,9 @@ CollisionObject CollisionObject::from_pvxs_value(const pvxs::Value& value) {
     return obj;
 }
 
-void CollisionObject::to_pvxs_value(pvxs::Value& value) const {
+void SceneObject::to_pvxs_value(pvxs::Value& value) const {
     if (shapes.size() != 1 || shape_poses.size() != 1) {
-        throw std::runtime_error("PVA obstacles require exactly one shape and one shape pose per object");
+        throw std::runtime_error("PVA scene objects require exactly one shape and one shape pose per object");
     }
 
     value["name"] = name;
@@ -171,34 +171,33 @@ void CollisionObject::to_pvxs_value(pvxs::Value& value) const {
     }
 }
 
-pvxs::Value CollisionWorld::to_pvxs_value() const {
-    auto top = obstacles_pva_type().create();
+pvxs::Value PlanningScene::to_pvxs_value() const {
+    auto top = scene_objects_pva_type().create();
 
-    pvxs::shared_array<pvxs::Value> obstacles(this->objects.size());
+    pvxs::shared_array<pvxs::Value> objects(this->objects.size());
     size_t i = 0;
     for (const auto& [name, obj] : this->objects) {
-        obstacles[i] = top["obstacles"].allocMember();
-        obj.to_pvxs_value(obstacles[i]);
+        objects[i] = top["objects"].allocMember();
+        obj.to_pvxs_value(objects[i]);
         ++i;
     }
-    top["obstacles"] = obstacles.freeze();
+    top["objects"] = objects.freeze();
     top["revision"] = uint64_t{0};
 
     return top;
 }
 
-CollisionWorld CollisionWorld::from_json(std::istream& input) {
+PlanningScene PlanningScene::from_json(std::istream& input) {
     using json = nlohmann::json;
-    CollisionWorld world{};
-    quicktype::Obstacles obstacles = json::parse(input);
-    for (auto& ob : obstacles) {
-        auto coll_obj = CollisionObject::from_quicktype(ob.first, ob.second);
-        world.add_object(coll_obj);
+    PlanningScene world{};
+    quicktype::SceneObjects objects = json::parse(input);
+    for (auto& ob : objects) {
+        world.add_object(SceneObject::from_quicktype(ob.first, ob.second));
     }
     return world;
 }
 
-CollisionWorld CollisionWorld::from_json(const std::string& file_path) {
+PlanningScene PlanningScene::from_json(const std::string& file_path) {
     std::ifstream file(file_path);
     if (!file) {
         throw std::invalid_argument("Invalid file path provided " + file_path);
@@ -206,29 +205,28 @@ CollisionWorld CollisionWorld::from_json(const std::string& file_path) {
     return from_json(file);
 }
 
-void CollisionWorld::add_from_json(const std::string& file_path) {
+void PlanningScene::add_from_json(const std::string& file_path) {
     using json = nlohmann::json;
     std::ifstream file(file_path);
     if (!file) {
         throw std::invalid_argument("Invalid file path provided " + file_path);
     }
-    quicktype::Obstacles obstacles = json::parse(file);
-    for (auto& ob : obstacles) {
-        auto coll_obj = CollisionObject::from_quicktype(ob.first, ob.second);
-        add_object(coll_obj);
+    quicktype::SceneObjects objects = json::parse(file);
+    for (auto& ob : objects) {
+        add_object(SceneObject::from_quicktype(ob.first, ob.second));
     }
 }
 
-void CollisionWorld::add_object(CollisionObject obj) {
+void PlanningScene::add_object(SceneObject obj) {
     std::string name = obj.name;
     objects.insert_or_assign(std::move(name), std::move(obj));
 }
 
-void CollisionWorld::remove_object(const std::string& name) {
+void PlanningScene::remove_object(const std::string& name) {
     objects.erase(name);
 }
 
-std::optional<std::string> CollisionWorld::check_point(const Position& point) const {
+std::optional<std::string> PlanningScene::check_point(const Position& point) const {
     for (auto& [_, obj] : objects) {
         for (size_t i = 0; i < obj.shapes.size(); i++) {
 
@@ -236,7 +234,7 @@ std::optional<std::string> CollisionWorld::check_point(const Position& point) co
             auto& shape = obj.shapes[i];
             auto& pose_os = obj.shape_poses[i];
 
-            // Transformation matrix from the world to the CollisionObject frame
+            // Transformation matrix from the world to the SceneObject frame
             Eigen::Isometry3d g_wo;
             {
                 auto position = Eigen::Vector3d(pose_wo.position.x,pose_wo.position.y,pose_wo.position.z);
@@ -247,7 +245,7 @@ std::optional<std::string> CollisionWorld::check_point(const Position& point) co
                 g_wo = (Eigen::Translation3d(position) * rotation).matrix();
             }
 
-            // Transformation matrix from CollisionObject frame to this shape's frame
+            // Transformation matrix from SceneObject frame to this shape's frame
             Eigen::Isometry3d g_os;
             {
                 auto position = Eigen::Vector3d(pose_os.position.x,pose_os.position.y,pose_os.position.z);

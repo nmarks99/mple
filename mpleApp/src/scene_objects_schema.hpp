@@ -4,7 +4,7 @@
 //
 //  Then include this file, and then do
 //
-//     Obstacles data = nlohmann::json::parse(jsonString);
+//     SceneObjects data = nlohmann::json::parse(jsonString);
 #pragma once
 
 #include <optional>
@@ -83,7 +83,7 @@ namespace quicktype {
     }
     #endif
 
-    struct ObstaclePose {
+    struct SceneObjectPose {
         std::vector<double> orientation;
         std::vector<double> position;
     };
@@ -101,17 +101,17 @@ namespace quicktype {
         Type type;
     };
 
-    struct ObstacleValue {
-        ObstaclePose pose;
+    struct SceneObjectValue {
+        SceneObjectPose pose;
         std::vector<ShapeElement> shapes;
     };
 
-    using Obstacles = std::map<std::string, ObstacleValue>;
+    using SceneObjects = std::map<std::string, SceneObjectValue>;
 }
 
 namespace quicktype {
-    void from_json(const json & j, ObstaclePose & x);
-    void to_json(json & j, const ObstaclePose & x);
+    void from_json(const json & j, SceneObjectPose & x);
+    void to_json(json & j, const SceneObjectPose & x);
 
     void from_json(const json & j, ShapePose & x);
     void to_json(json & j, const ShapePose & x);
@@ -119,18 +119,18 @@ namespace quicktype {
     void from_json(const json & j, ShapeElement & x);
     void to_json(json & j, const ShapeElement & x);
 
-    void from_json(const json & j, ObstacleValue & x);
-    void to_json(json & j, const ObstacleValue & x);
+    void from_json(const json & j, SceneObjectValue & x);
+    void to_json(json & j, const SceneObjectValue & x);
 
     void from_json(const json & j, Type & x);
     void to_json(json & j, const Type & x);
 
-    inline void from_json(const json & j, ObstaclePose& x) {
+    inline void from_json(const json & j, SceneObjectPose& x) {
         x.orientation = j.at("orientation").get<std::vector<double>>();
         x.position = j.at("position").get<std::vector<double>>();
     }
 
-    inline void to_json(json & j, const ObstaclePose & x) {
+    inline void to_json(json & j, const SceneObjectPose & x) {
         j = json::object();
         j["orientation"] = x.orientation;
         j["position"] = x.position;
@@ -160,12 +160,12 @@ namespace quicktype {
         j["type"] = x.type;
     }
 
-    inline void from_json(const json & j, ObstacleValue& x) {
-        x.pose = j.at("pose").get<ObstaclePose>();
+    inline void from_json(const json & j, SceneObjectValue& x) {
+        x.pose = j.at("pose").get<SceneObjectPose>();
         x.shapes = j.at("shapes").get<std::vector<ShapeElement>>();
     }
 
-    inline void to_json(json & j, const ObstacleValue & x) {
+    inline void to_json(json & j, const SceneObjectValue & x) {
         j = json::object();
         j["pose"] = x.pose;
         j["shapes"] = x.shapes;
@@ -193,7 +193,7 @@ namespace quicktype {
 /**
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ObstacleConfigSchema",
+  "title": "SceneObjectConfigSchema",
   "type": "object",
   "additionalProperties": {
     "type": "object",

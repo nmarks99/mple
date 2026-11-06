@@ -1,29 +1,29 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 
-#include "collisions.hpp"
+#include "planning_scene.hpp"
 
 MAIN(testCollisions) {
     testPlan(2);
 
     Position point(-2, 2 ,0);
 
-    CollisionWorld world;
-    world.add_object(CollisionObject {
+    PlanningScene world;
+    world.add_object(SceneObject {
         "box1",
         Pose { {1, 2, 0}, {0, 0, 0} },
         { Box {2, 2, 2} },
         { Pose { {2, 1, 0}, {0, 0, M_PI/4.0} } }
     });
 
-    world.add_object(CollisionObject {
+    world.add_object(SceneObject {
         "box2",
         Pose { {3, -2, 0}, {0, 0, 0} },
         { Box {2, 2, 2} },
         { Pose { {0, 0, 0}, {0, 0, 0} } }
     });
 
-    world.add_object(CollisionObject {
+    world.add_object(SceneObject {
         "sphere1",
         Pose {{-2, 2, 0}, {0, 0, 0}},
         { Sphere {1} },
@@ -57,23 +57,23 @@ MAIN(testCollisions) {
         // return EXIT_FAILURE;
     // }
 //
-    // CollisionWorld world;
+    // PlanningScene world;
 //
-    // world.add_object(CollisionObject {
+    // world.add_object(SceneObject {
         // "box1",
         // Pose { {1, 2, 0}, {0, 0, 0} },
         // { Box {2, 2, 2} },
         // { Pose { {2, 1, 0}, {0, 0, M_PI/4.0} } }
     // });
 //
-    // world.add_object(CollisionObject {
+    // world.add_object(SceneObject {
         // "box2",
         // Pose { {3, -2, 0}, {0, 0, 0} },
         // { Box {2, 2, 2} },
         // { Pose { {0, 0, 0}, {0, 0, 0} } }
     // });
 //
-    // world.add_object(CollisionObject {
+    // world.add_object(SceneObject {
         // "sphere1",
         // Pose {{-2, 2, 0}, {0, 0, 0}},
         // { Sphere {1} },

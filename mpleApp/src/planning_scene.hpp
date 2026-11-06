@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 #include <cassert>
-#include "obstacles_schema.hpp"
+#include "scene_objects_schema.hpp"
 
 #include <pvxs/nt.h>
 #include <pvxs/server.h>
@@ -62,30 +62,30 @@ struct Cylinder {
     double height;
 };
 
-pvxs::TypeDef obstacles_pva_type();
+pvxs::TypeDef scene_objects_pva_type();
 
-// A collision object made up of one or more primitive shapes
-struct CollisionObject {
-    static CollisionObject from_quicktype(const std::string& name, quicktype::ObstacleValue ob);
-    static CollisionObject from_pvxs_value(const pvxs::Value& value);
+// A scene object made up of one or more primitive shapes
+struct SceneObject {
+    static SceneObject from_quicktype(const std::string& name, quicktype::SceneObjectValue ob);
+    static SceneObject from_pvxs_value(const pvxs::Value& value);
 
     std::string name;
-    Pose pose;                                               // CollisionObject pose in world frame
+    Pose pose;                                               // SceneObject pose in world frame
     std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
-    std::vector<Pose> shape_poses;                           // Pose of each shape in CollisionObject frame
+    std::vector<Pose> shape_poses;                           // Pose of each shape in SceneObject frame
 
     void to_pvxs_value(pvxs::Value& value) const;
 };
 
-struct CollisionWorld {
-    static CollisionWorld from_json(std::istream& input);
-    static CollisionWorld from_json(const std::string& file_path);
+struct PlanningScene {
+    static PlanningScene from_json(std::istream& input);
+    static PlanningScene from_json(const std::string& file_path);
 
     pvxs::Value to_pvxs_value() const;
 
     // Adds an object to the world. If an object with the same name is already
     // present, it is overwritten.
-    void add_object(CollisionObject obj);
+    void add_object(SceneObject obj);
 
     // Adds object to the world specified in a json file
     void add_from_json(const std::string& file_path);
@@ -99,5 +99,5 @@ struct CollisionWorld {
     std::optional<std::string> check_point(const Position& point) const;
 
     // Map of the objects in the world, keyed by name
-    std::unordered_map<std::string, CollisionObject> objects;
+    std::unordered_map<std::string, SceneObject> objects;
 };

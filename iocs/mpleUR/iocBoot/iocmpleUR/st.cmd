@@ -12,7 +12,7 @@ iocshLoad("urRobot.iocsh", "IP=164.54.104.7")
 
 # Load the adapter for our robot and create a mple instance
 LuaMpleAdapterConfig("UR", "ur_adapter.lua", "P=$(PREFIX),MPLE=$(MPLE)")
-MpleConfig("UR", "$(PREFIX)mple:", "obstacles.json")
+MpleConfig("UR", "$(PREFIX)mple:", "scene.json")
 
 ###############################################################################
 iocInit
