@@ -4,7 +4,7 @@ from p4p import Value, Type
 from math import pi
 import numpy as np
 
-from mple.scene_objects import Pose, SceneObject, SceneObjects
+from mple.scene_objects import Pose, SceneObject, SceneObjects, SceneShape
 
 
 class Mple:
@@ -21,16 +21,21 @@ class Mple:
         objects = [
             SceneObject(
                 name=obj["name"],
-                shape_type=obj["type"],
                 pose=Pose(
                     position=tuple(obj["position"]),
                     orientation=tuple(obj["orientation"]),
                 ),
-                shape_pose=Pose(
-                    position=tuple(obj["shape_position"]),
-                    orientation=tuple(obj["shape_orientation"]),
-                ),
-                dimensions=tuple(obj["dimensions"]),
+                shapes=[
+                    SceneShape(
+                        shape_type=shape["type"],
+                        pose=Pose(
+                            position=tuple(shape["position"]),
+                            orientation=tuple(shape["orientation"]),
+                        ),
+                        dimensions=tuple(shape["dimensions"]),
+                    )
+                    for shape in obj["shapes"]
+                ],
             )
             for obj in value["objects"]
         ]

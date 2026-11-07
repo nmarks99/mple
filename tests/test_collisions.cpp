@@ -12,22 +12,34 @@ MAIN(testCollisions) {
     world.add_object(SceneObject {
         "box1",
         Pose { {1, 2, 0}, {0, 0, 0} },
-        { Box {2, 2, 2} },
-        { Pose { {2, 1, 0}, {0, 0, M_PI/4.0} } }
+        {
+            SceneShape {
+                Box {2, 2, 2},
+                Pose { {2, 1, 0}, {0, 0, M_PI/4.0} }
+            }
+        }
     });
 
     world.add_object(SceneObject {
         "box2",
         Pose { {3, -2, 0}, {0, 0, 0} },
-        { Box {2, 2, 2} },
-        { Pose { {0, 0, 0}, {0, 0, 0} } }
+        {
+            SceneShape {
+                Box {2, 2, 2},
+                Pose { {0, 0, 0}, {0, 0, 0} }
+            }
+        }
     });
 
     world.add_object(SceneObject {
         "sphere1",
         Pose {{-2, 2, 0}, {0, 0, 0}},
-        { Sphere {1} },
-        { Pose { {0, 0, 0}, {0, 0, 0} } }
+        {
+            SceneShape {
+                Sphere {1},
+                Pose { {0, 0, 0}, {0, 0, 0} }
+            }
+        }
     });
 
     auto collision = world.check_point(point);

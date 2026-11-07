@@ -6,61 +6,71 @@
 #include <nlohmann/json.hpp>
 #include "planning_scene.hpp"
 
-SceneObject SceneObject::from_quicktype(const std::string& name, quicktype::SceneObjectValue ob) {
+SceneObject SceneObject::from_quicktype(const std::string& name, const quicktype::SceneObjectValue& q_obj) {
 
-    std::vector<std::variant<Box, Sphere, Cylinder>> shapes;
-    std::vector<Pose> shape_poses;
-    for (auto& shape : ob.shapes) {
-        if (shape.type == quicktype::Type::BOX) {
-            shapes.push_back(Box{
-                shape.dimensions[0],
-                shape.dimensions[1],
-                shape.dimensions[2],
-            });
-        } else if (shape.type == quicktype::Type::SPHERE) {
-            shapes.push_back(Sphere{
-                shape.dimensions[0],
-            });
-        } else if (shape.type == quicktype::Type::CYLINDER) {
-            shapes.push_back(Cylinder {
-                shape.dimensions[0],
-                shape.dimensions[1],
-            });
+    std::vector<SceneShape> shapes;
+    for (auto& qshape : q_obj.shapes) {
+        SceneShape shape;
+        switch (qshape.type) {
+            case quicktype::Type::BOX:
+                shape.primitive = Box{
+                    qshape.dimensions[0],
+                    qshape.dimensions[1],
+                    qshape.dimensions[2],
+                };
+                break;
+            case quicktype::Type::SPHERE:
+                shape.primitive = Sphere{
+                    qshape.dimensions[0],
+                };
+                break;
+            case quicktype::Type::CYLINDER:
+                shape.primitive = Cylinder {
+                    qshape.dimensions[0],
+                    qshape.dimensions[1],
+                };
+                break;
         }
-        Pose shape_pose;
-        if (shape.pose) {
-            if (auto pos = shape.pose.value().position) {
-                shape_pose.position = *pos;
+
+        if (qshape.pose) {
+            if (auto pos = qshape.pose.value().position) {
+                shape.pose.position = *pos;
             }
-            if (auto ori = shape.pose.value().orientation) {
-                shape_pose.orientation = *ori;
+            if (auto ori = qshape.pose.value().orientation) {
+                shape.pose.orientation = *ori;
             }
         } else {
-            shape_pose.position = {0, 0, 0};
-            shape_pose.orientation = {0, 0, 0};
+            shape.pose.position = {0, 0, 0};
+            shape.pose.orientation = {0, 0, 0};
         }
-        shape_poses.push_back(shape_pose);
+        shapes.push_back(std::move(shape));
     }
 
     return SceneObject {
         name,
-        Pose{ Position(ob.pose.position), Orientation(ob.pose.orientation) },
+        Pose{
+            Position(q_obj.pose.position),
+            Orientation(q_obj.pose.orientation)
+        },
         shapes,
-        shape_poses
     };
 }
 
+// PVA structure to define objects in the planning scene.
+// Each object is composed of one or more primitive shapes.
 pvxs::TypeDef scene_objects_pva_type() {
     namespace M = pvxs::members;
     return pvxs::TypeDef(pvxs::TypeCode::Struct, {
         M::StructA("objects", {
             M::String("name"),
-            M::String("type"),
             M::Float64A("position"),
             M::Float64A("orientation"),
-            M::Float64A("shape_position"),
-            M::Float64A("shape_orientation"),
-            M::Float64A("dimensions"),
+            M::StructA("shapes", {
+                M::String("type"),
+                M::Float64A("position"),
+                M::Float64A("orientation"),
+                M::Float64A("dimensions"),
+            }),
         }),
         M::UInt64("revision")
     });
@@ -72,56 +82,52 @@ SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
 
     SceneObject obj;
 
-    obj.name = value["name"].as<std::string>();
+    // obj.name = value["name"].as<std::string>();
 
-    auto shape_type = value["type"].as<std::string>();
-    if (shape_type == "sphere") {
-        Sphere sphere;
-        sphere.radius = value["dimensions"].as<pvxs::shared_array<const double>>()[0];
-        obj.shapes.push_back(sphere);
-        auto pos = value["position"].as<pvxs::shared_array<const double>>();
-        auto ori = value["orientation"].as<pvxs::shared_array<const double>>();
-        Pose pose;
-        pose.position.x = pos[0];
-        pose.position.y = pos[1];
-        pose.position.z = pos[2];
-        pose.orientation.rx = ori[0];
-        pose.orientation.ry = ori[1];
-        pose.orientation.rz = ori[2];
-        obj.pose = pose;
-    } else {
-        // TODO: implement for other shapes
-        throw std::runtime_error("unsupported shape type" + shape_type);
-    }
-
-    Pose shape_pose{
-        Position{0.0, 0.0, 0.0},
-        Orientation{0.0, 0.0, 0.0}
-    };
-    auto shape_pos = value["shape_position"].as<pvxs::shared_array<const double>>();
-    if (!shape_pos.empty()) {
-        if (shape_pos.size() != 3) {
-            throw std::runtime_error("shape_position must contain three values");
-        }
-        shape_pose.position = {shape_pos[0], shape_pos[1], shape_pos[2]};
-    }
-    auto shape_ori = value["shape_orientation"].as<pvxs::shared_array<const double>>();
-    if (!shape_ori.empty()) {
-        if (shape_ori.size() != 3) {
-            throw std::runtime_error("shape_orientation must contain three values");
-        }
-        shape_pose.orientation = {shape_ori[0], shape_ori[1], shape_ori[2]};
-    }
-    obj.shape_poses.push_back(shape_pose);
+    // auto shape_type = value["type"].as<std::string>();
+    // if (shape_type == "sphere") {
+        // Sphere sphere;
+        // sphere.radius = value["dimensions"].as<pvxs::shared_array<const double>>()[0];
+        // obj.shapes.push_back(sphere);
+        // auto pos = value["position"].as<pvxs::shared_array<const double>>();
+        // auto ori = value["orientation"].as<pvxs::shared_array<const double>>();
+        // Pose pose;
+        // pose.position.x = pos[0];
+        // pose.position.y = pos[1];
+        // pose.position.z = pos[2];
+        // pose.orientation.rx = ori[0];
+        // pose.orientation.ry = ori[1];
+        // pose.orientation.rz = ori[2];
+        // obj.pose = pose;
+    // } else {
+        // // TODO: implement for other shapes
+        // throw std::runtime_error("unsupported shape type" + shape_type);
+    // }
+//
+    // Pose shape_pose{
+        // Position{0.0, 0.0, 0.0},
+        // Orientation{0.0, 0.0, 0.0}
+    // };
+    // auto shape_pos = value["shape_position"].as<pvxs::shared_array<const double>>();
+    // if (!shape_pos.empty()) {
+        // if (shape_pos.size() != 3) {
+            // throw std::runtime_error("shape_position must contain three values");
+        // }
+        // shape_pose.position = {shape_pos[0], shape_pos[1], shape_pos[2]};
+    // }
+    // auto shape_ori = value["shape_orientation"].as<pvxs::shared_array<const double>>();
+    // if (!shape_ori.empty()) {
+        // if (shape_ori.size() != 3) {
+            // throw std::runtime_error("shape_orientation must contain three values");
+        // }
+        // shape_pose.orientation = {shape_ori[0], shape_ori[1], shape_ori[2]};
+    // }
+    // obj.shape_poses.push_back(shape_pose);
 
     return obj;
 }
 
 void SceneObject::to_pvxs_value(pvxs::Value& value) const {
-    if (shapes.size() != 1 || shape_poses.size() != 1) {
-        throw std::runtime_error("PVA scene objects require exactly one shape and one shape pose per object");
-    }
-
     value["name"] = name;
     value["position"] = pvxs::shared_array<const double>{
         pose.position.x,
@@ -134,41 +140,44 @@ void SceneObject::to_pvxs_value(pvxs::Value& value) const {
         pose.orientation.rz
     };
 
-    for (const auto& shape_pose : shape_poses) {
-        value["shape_position"] = pvxs::shared_array<const double>{
-            shape_pose.position.x,
-            shape_pose.position.y,
-            shape_pose.position.z
+    pvxs::shared_array<pvxs::Value> shape_values(shapes.size());
+    for (size_t i = 0; i < shapes.size(); ++i) {
+        const auto& shape = shapes[i];
+        auto& shape_value = shape_values[i];
+        shape_value = value["shapes"].allocMember();
+        shape_value["position"] = pvxs::shared_array<const double>{
+            shape.pose.position.x,
+            shape.pose.position.y,
+            shape.pose.position.z
         };
-        value["shape_orientation"] = pvxs::shared_array<const double>{
-            shape_pose.orientation.rx,
-            shape_pose.orientation.ry,
-            shape_pose.orientation.rz
+        shape_value["orientation"] = pvxs::shared_array<const double>{
+            shape.pose.orientation.rx,
+            shape.pose.orientation.ry,
+            shape.pose.orientation.rz
         };
-    }
 
-    for (const auto& shape : shapes) {
-        std::visit([&value](const auto& arg) {
-            using T = std::decay_t<decltype(arg)>;
+        std::visit([&shape_value](const auto& primitive) {
+            using T = std::decay_t<decltype(primitive)>;
             if constexpr (std::is_same_v<T, Sphere>) {
-                value["type"] = "sphere";
-                value["dimensions"] = pvxs::shared_array<const double>{arg.radius};
+                shape_value["type"] = "sphere";
+                shape_value["dimensions"] = pvxs::shared_array<const double>{primitive.radius};
             } else if constexpr (std::is_same_v<T, Box>) {
-                value["type"] = "box";
-                value["dimensions"] = pvxs::shared_array<const double>{
-                    arg.width,
-                    arg.height,
-                    arg.depth
+                shape_value["type"] = "box";
+                shape_value["dimensions"] = pvxs::shared_array<const double>{
+                    primitive.width,
+                    primitive.height,
+                    primitive.depth
                 };
             } else if constexpr (std::is_same_v<T, Cylinder>) {
-                value["type"] = "cylinder";
-                value["dimensions"] = pvxs::shared_array<const double>{
-                    arg.radius,
-                    arg.height
+                shape_value["type"] = "cylinder";
+                shape_value["dimensions"] = pvxs::shared_array<const double>{
+                    primitive.radius,
+                    primitive.height
                 };
             }
-        }, shape);
+        }, shape.primitive);
     }
+    value["shapes"] = shape_values.freeze();
 }
 
 pvxs::Value PlanningScene::to_pvxs_value() const {
@@ -232,7 +241,7 @@ std::optional<std::string> PlanningScene::check_point(const Position& point) con
 
             auto& pose_wo = obj.pose;
             auto& shape = obj.shapes[i];
-            auto& pose_os = obj.shape_poses[i];
+            auto& pose_os = obj.shapes[i].pose;
 
             // Transformation matrix from the world to the SceneObject frame
             Eigen::Isometry3d g_wo;
@@ -263,17 +272,18 @@ std::optional<std::string> PlanningScene::check_point(const Position& point) con
             // printf("[%s]Point in shape frame: (%lf,%lf,%lf)\n", obj.name.c_str(), ps.x(), ps.y(), ps.z());
             // printf("[%s]Point in world frame: (%lf,%lf,%lf)\n", obj.name.c_str(), pw.x(), pw.y(), pw.z());
 
-            if (auto* box = std::get_if<Box>(&shape)) {
+            if (auto* box = std::get_if<Box>(&shape.primitive)) {
                 Eigen::Vector3d half_extents(box->width / 2.0, box->height / 2.0, box->depth / 2.0);
                 if ((ps.array().abs() <= half_extents.array()).all()) {
                     return obj.name;
                 }
-            } else if (auto* sphere = std::get_if<Sphere>(&shape)) {
+            } else if (auto* sphere = std::get_if<Sphere>(&shape.primitive)) {
                 if (ps.squaredNorm() <= (sphere->radius*sphere->radius)) {
                     return obj.name;
                 }
-            } else if (auto* cylinder = std::get_if<Cylinder>(&shape)) {
-                // TODO:
+            } else if (auto* cylinder = std::get_if<Cylinder>(&shape.primitive)) {
+                // FIX:
+                (void)cylinder;
                 printf("[check_point] cylinder check not implemented yet\n");
             }
         }

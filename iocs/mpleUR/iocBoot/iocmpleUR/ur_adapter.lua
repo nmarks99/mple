@@ -17,10 +17,6 @@ function get_state()
    return joints
 end
 
-function get_tcp_pose()
-    return epics.get(P .. "Receive:Pose")
-end
-
 function moving()
     local moving = epics.get(P .. "Control:Moving")
     if (moving == 1) then
@@ -28,6 +24,10 @@ function moving()
     else
         return false
     end
+end
+
+function stop()
+    epics.put(P .. "Control:ServoStop", 1)
 end
 
 function move(trajectory)
@@ -68,8 +68,4 @@ function move(trajectory)
     -- HACK: wait for motion to start
     osi.sleep(0.2)
     return true
-end
-
-function stop()
-    epics.put(P .. "Control:ServoStop", 1)
 end

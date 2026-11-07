@@ -83,16 +83,17 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
     // Load scene objects file
     if (!scene_objects_file.empty()) {
-        printf("Loading scene objects from json file %s\n", scene_objects_file.c_str());
         planning_scene_.add_from_json(scene_objects_file);
-
-        // Set initial value of scene objects PV from planning scene
-        scene_objects_value_ = planning_scene_.to_pvxs_value();
-        scene_objects_pv_.open(scene_objects_value_);
-        pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
+        printf("Loaded scene objects from json file %s\n", scene_objects_file.c_str());
     }
 
+    // Set initial value of scene objects PV from planning scene
+    scene_objects_value_ = planning_scene_.to_pvxs_value();
+    scene_objects_pv_.open(scene_objects_value_);
+    pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
+
     // Create status PV
+    // TODO: is this properly updated/should it have any more fields?
     namespace M = pvxs::members;
     status_value_ = pvxs::TypeDef(pvxs::TypeCode::Struct, {
         M::Bool("running"),
@@ -120,14 +121,6 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     });
     pvxs::ioc::server().addPV(prefix + "Validate", validate_pv_);
 
-    // Execute
-    execute_pv_.onRPC([this](pvxs::server::SharedPV& pv,
-                          std::unique_ptr<pvxs::server::ExecOp>&& op,
-                          pvxs::Value&& request_value) {
-        execute_rpc_callback(std::move(op), std::move(request_value));
-    });
-    pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
-
     // Plan
     plan_pv_.onRPC([this](pvxs::server::SharedPV& pv,
                           std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -135,6 +128,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         plan_rpc_callback(std::move(op), std::move(request_value));
     });
     pvxs::ioc::server().addPV(prefix + "Plan", plan_pv_);
+
+    // Execute
+    execute_pv_.onRPC([this](pvxs::server::SharedPV& pv,
+                          std::unique_ptr<pvxs::server::ExecOp>&& op,
+                          pvxs::Value&& request_value) {
+        execute_rpc_callback(std::move(op), std::move(request_value));
+    });
+    pvxs::ioc::server().addPV(prefix + "Execute", execute_pv_);
 
     // Forward Kinematics
     fk_pv_.onRPC([this](pvxs::server::SharedPV& pv,

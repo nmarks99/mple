@@ -25,7 +25,9 @@ struct Position {
         z = pos[2];
     }
     Position(double xi, double yi, double zi) : x(xi), y(yi), z(zi) {}
-    double x, y, z;
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
 };
 
 // Euler angles
@@ -38,7 +40,9 @@ struct Orientation {
         rz = ori[2];
     }
     Orientation(double rxi, double ryi, double rzi) : rx(rxi), ry(ryi), rz(rzi) {}
-    double rx, ry, rz;
+    double rx = 0.0;
+    double ry = 0.0;
+    double rz = 0.0;
 };
 
 struct Pose {
@@ -64,15 +68,25 @@ struct Cylinder {
 
 pvxs::TypeDef scene_objects_pva_type();
 
+using ScenePrimitive = std::variant<Box, Sphere, Cylinder>;
+
+struct SceneShape {
+    ScenePrimitive primitive;
+    Pose pose;
+};
+
 // A scene object made up of one or more primitive shapes
 struct SceneObject {
-    static SceneObject from_quicktype(const std::string& name, quicktype::SceneObjectValue ob);
+    static SceneObject from_quicktype(const std::string& name, const quicktype::SceneObjectValue& q_obj);
     static SceneObject from_pvxs_value(const pvxs::Value& value);
 
     std::string name;
     Pose pose;                                               // SceneObject pose in world frame
-    std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
-    std::vector<Pose> shape_poses;                           // Pose of each shape in SceneObject frame
+
+    // FIX: Remove. Replaced with the std::vector<SceneShape>
+    // std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
+    // std::vector<Pose> shape_poses;                           // Pose of each shape in SceneObject frame
+    std::vector<SceneShape> shapes;
 
     void to_pvxs_value(pvxs::Value& value) const;
 };
