@@ -63,7 +63,7 @@ SceneObject SceneObject::from_quicktype(const std::string& name, const quicktype
 // Each object is composed of one or more primitive shapes.
 pvxs::TypeDef scene_objects_pva_type() {
     namespace M = pvxs::members;
-    return pvxs::TypeDef(pvxs::TypeCode::Struct, {
+    static const pvxs::TypeDef type{pvxs::TypeCode::Struct, {
         M::StructA("objects", {
             M::String("name"),
             M::Float64A("position"),
@@ -76,7 +76,8 @@ pvxs::TypeDef scene_objects_pva_type() {
             }),
         }),
         M::UInt64("revision")
-    });
+    }};
+    return type;
 }
 
 namespace {

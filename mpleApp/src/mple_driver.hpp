@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <pvxs/iochooks.h>
 #include <pvxs/nt.h>
@@ -23,7 +25,8 @@ class MpleDriver {
 
   private:
     MpleAdapter* adapter_;
-    PlanningScene planning_scene_ {};
+    std::mutex scene_mutex_;
+    std::shared_ptr<const PlanningScene> planning_scene_;
     MpleSystemModel system_;
 
     pvxs::Value status_value_;
@@ -384,7 +387,10 @@ class MpleDriver {
         }
     };
 
-    std::optional<std::string> check_state_collision(const std::vector<double>& state);
+    std::shared_ptr<const PlanningScene> scene_snapshot();
+
+    std::optional<std::string> check_state_collision(const PlanningScene& scene,
+                                                     const std::vector<double>& state);
 
     void stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& put_value);
 

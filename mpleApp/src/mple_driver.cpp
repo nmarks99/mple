@@ -82,13 +82,15 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     }
 
     // Load scene objects file
+    auto initial_scene = std::make_shared<PlanningScene>();
     if (!scene_objects_file.empty()) {
-        planning_scene_.add_from_json(scene_objects_file);
+        initial_scene->add_from_json(scene_objects_file);
         printf("Loaded scene objects from json file %s\n", scene_objects_file.c_str());
     }
+    planning_scene_ = initial_scene;
 
     // Set initial value of scene objects PV from planning scene
-    scene_objects_value_ = planning_scene_.to_pvxs_value(scene_revision_);
+    scene_objects_value_ = planning_scene_->to_pvxs_value(scene_revision_);
     scene_objects_pv_.open(scene_objects_value_);
     pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
 
@@ -154,8 +156,13 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
+std::shared_ptr<const PlanningScene> MpleDriver::scene_snapshot() {
+    std::lock_guard<std::mutex> lock(scene_mutex_);
+    return planning_scene_;
+}
+
 std::optional<std::string> MpleDriver::check_state_collision(
-    const std::vector<double>& state) {
+    const PlanningScene& scene, const std::vector<double>& state) {
 
     auto pose = adapter_->fk(state);
     if (!pose) {
@@ -163,7 +170,7 @@ std::optional<std::string> MpleDriver::check_state_collision(
     }
 
     const Position position{pose->at(0), pose->at(1), pose->at(2)};
-    return planning_scene_.check_point(position);
+    return scene.check_point(position);
 }
 
 void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -189,6 +196,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
+    auto scene = scene_snapshot();
+
     std::vector<double> start(request->start.begin(), request->start.end());
     if (start.empty()) {
         std::cout << "No starting state provided, using current state as start\n";
@@ -197,8 +206,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
     PlanResult result = plan(
         start, goal,
-        [this](const std::vector<double>& state) {
-            return !check_state_collision(state);
+        [this, &scene](const std::vector<double>& state) {
+            return !check_state_collision(*scene, state);
         });
 
     response.valid = result.valid;
@@ -386,13 +395,15 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
         return;
     }
 
+    auto scene = scene_snapshot();
+
     // Collision, workspace, and joint limit checks require both joint
     // angles and TCP pose, hence why we need FK and IK depending on
     // which waypoints were given to the Validate method
     std::optional<std::string> hit;
     if (!request->joint_waypoints.empty()) {
         for (const auto& wp : request->joint_waypoints) {
-            hit = check_state_collision(wp);
+            hit = check_state_collision(*scene, wp);
             if (hit) {
                 break;
             }
@@ -408,7 +419,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
             } else {
                 // TODO: check joint and workspace limits
                 Position p{wp[0], wp[1], wp[2]};
-                hit = planning_scene_.check_point(p);
+                hit = scene->check_point(p);
                 if (hit) { break; }
             }
         }
