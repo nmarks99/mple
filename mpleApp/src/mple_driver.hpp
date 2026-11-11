@@ -29,6 +29,7 @@ class MpleDriver {
     pvxs::Value status_value_;
     pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
 
+    uint64_t scene_revision_ = 0;
     pvxs::Value scene_objects_value_;
     pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildReadonly();
 

@@ -1,6 +1,9 @@
+#include <cmath>
 #include <cstdint>
 #include <fstream>
+#include <stdexcept>
 #include <type_traits>
+#include <unordered_set>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <nlohmann/json.hpp>
@@ -76,55 +79,114 @@ pvxs::TypeDef scene_objects_pva_type() {
     });
 }
 
-// TODO: finish this, and use it in onPut method to convert the
-// received pvxs::Value to a SceneObject
-SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
+namespace {
 
+pvxs::shared_array<const double> read_array(const pvxs::Value& value, const char* field,
+                                            const std::string& context) {
+    auto arr = value[field].as<pvxs::shared_array<const double>>();
+    for (const double v : arr) {
+        if (!std::isfinite(v)) {
+            throw std::invalid_argument(context + ": " + field + " contains a non-finite value");
+        }
+    }
+    return arr;
+}
+
+Pose read_pose(const pvxs::Value& value, const std::string& context) {
+    auto pos = read_array(value, "position", context);
+    auto ori = read_array(value, "orientation", context);
+    if (pos.size() != 3) {
+        throw std::invalid_argument(context + ": position must contain 3 values");
+    }
+    if (ori.size() != 3) {
+        throw std::invalid_argument(context + ": orientation must contain 3 values");
+    }
+    return Pose{Position{pos[0], pos[1], pos[2]}, Orientation{ori[0], ori[1], ori[2]}};
+}
+
+ScenePrimitive read_primitive(const pvxs::Value& value, const std::string& context) {
+    const auto type = value["type"].as<std::string>();
+    auto dims = read_array(value, "dimensions", context);
+
+    size_t expected = 0;
+    if (type == "sphere") {
+        expected = 1;
+    } else if (type == "box") {
+        expected = 3;
+    } else if (type == "cylinder") {
+        expected = 2;
+    } else {
+        throw std::invalid_argument(context + ": unknown shape type '" + type + "'");
+    }
+
+    if (dims.size() != expected) {
+        throw std::invalid_argument(context + ": " + type + " requires " + std::to_string(expected) +
+                                    " dimensions, got " + std::to_string(dims.size()));
+    }
+    for (const double d : dims) {
+        if (d <= 0.0) {
+            throw std::invalid_argument(context + ": dimensions must be positive");
+        }
+    }
+
+    if (type == "sphere") {
+        return Sphere{dims[0]};
+    } else if (type == "box") {
+        return Box{dims[0], dims[1], dims[2]};
+    }
+    return Cylinder{dims[0], dims[1]};
+}
+
+} // namespace
+
+SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
     SceneObject obj;
 
-    // obj.name = value["name"].as<std::string>();
+    obj.name = value["name"].as<std::string>();
+    if (obj.name.empty()) {
+        throw std::invalid_argument("Scene object name must not be empty");
+    }
+    const std::string context = "Object '" + obj.name + "'";
 
-    // auto shape_type = value["type"].as<std::string>();
-    // if (shape_type == "sphere") {
-        // Sphere sphere;
-        // sphere.radius = value["dimensions"].as<pvxs::shared_array<const double>>()[0];
-        // obj.shapes.push_back(sphere);
-        // auto pos = value["position"].as<pvxs::shared_array<const double>>();
-        // auto ori = value["orientation"].as<pvxs::shared_array<const double>>();
-        // Pose pose;
-        // pose.position.x = pos[0];
-        // pose.position.y = pos[1];
-        // pose.position.z = pos[2];
-        // pose.orientation.rx = ori[0];
-        // pose.orientation.ry = ori[1];
-        // pose.orientation.rz = ori[2];
-        // obj.pose = pose;
-    // } else {
-        // // TODO: implement for other shapes
-        // throw std::runtime_error("unsupported shape type" + shape_type);
-    // }
-//
-    // Pose shape_pose{
-        // Position{0.0, 0.0, 0.0},
-        // Orientation{0.0, 0.0, 0.0}
-    // };
-    // auto shape_pos = value["shape_position"].as<pvxs::shared_array<const double>>();
-    // if (!shape_pos.empty()) {
-        // if (shape_pos.size() != 3) {
-            // throw std::runtime_error("shape_position must contain three values");
-        // }
-        // shape_pose.position = {shape_pos[0], shape_pos[1], shape_pos[2]};
-    // }
-    // auto shape_ori = value["shape_orientation"].as<pvxs::shared_array<const double>>();
-    // if (!shape_ori.empty()) {
-        // if (shape_ori.size() != 3) {
-            // throw std::runtime_error("shape_orientation must contain three values");
-        // }
-        // shape_pose.orientation = {shape_ori[0], shape_ori[1], shape_ori[2]};
-    // }
-    // obj.shape_poses.push_back(shape_pose);
+    obj.pose = read_pose(value, context);
+
+    auto shapes = value["shapes"].as<pvxs::shared_array<const pvxs::Value>>();
+    if (shapes.empty()) {
+        throw std::invalid_argument(context + ": must contain at least one shape");
+    }
+
+    obj.shapes.reserve(shapes.size());
+    for (size_t i = 0; i < shapes.size(); ++i) {
+        const std::string shape_context = context + " shape " + std::to_string(i);
+        if (!shapes[i].valid()) {
+            throw std::invalid_argument(shape_context + ": missing shape");
+        }
+        obj.shapes.push_back(SceneShape{
+            read_primitive(shapes[i], shape_context),
+            read_pose(shapes[i], shape_context),
+        });
+    }
 
     return obj;
+}
+
+PlanningScene PlanningScene::from_pvxs_value(const pvxs::Value& value) {
+    PlanningScene scene;
+    std::unordered_set<std::string> names;
+
+    auto objects = value["objects"].as<pvxs::shared_array<const pvxs::Value>>();
+    for (const auto& obj_value : objects) {
+        if (!obj_value.valid()) {
+            throw std::invalid_argument("Missing scene object");
+        }
+        auto obj = SceneObject::from_pvxs_value(obj_value);
+        if (!names.insert(obj.name).second) {
+            throw std::invalid_argument("Duplicate scene object name '" + obj.name + "'");
+        }
+        scene.add_object(std::move(obj));
+    }
+
+    return scene;
 }
 
 void SceneObject::to_pvxs_value(pvxs::Value& value) const {
@@ -180,7 +242,7 @@ void SceneObject::to_pvxs_value(pvxs::Value& value) const {
     value["shapes"] = shape_values.freeze();
 }
 
-pvxs::Value PlanningScene::to_pvxs_value() const {
+pvxs::Value PlanningScene::to_pvxs_value(uint64_t revision) const {
     auto top = scene_objects_pva_type().create();
 
     pvxs::shared_array<pvxs::Value> objects(this->objects.size());
@@ -191,7 +253,7 @@ pvxs::Value PlanningScene::to_pvxs_value() const {
         ++i;
     }
     top["objects"] = objects.freeze();
-    top["revision"] = uint64_t{0};
+    top["revision"] = revision;
 
     return top;
 }

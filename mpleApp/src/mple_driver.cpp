@@ -88,7 +88,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     }
 
     // Set initial value of scene objects PV from planning scene
-    scene_objects_value_ = planning_scene_.to_pvxs_value();
+    scene_objects_value_ = planning_scene_.to_pvxs_value(scene_revision_);
     scene_objects_pv_.open(scene_objects_value_);
     pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
 

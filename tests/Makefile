@@ -38,6 +38,13 @@ testCollisionsJson_LIBS += pvxs
 testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
 
+TESTPROD_HOST += testScenePva
+testScenePva_SRCS += test_scene_pva.cpp
+testScenePva_SRCS += planning_scene.cpp
+testScenePva_LIBS += pvxs
+testScenePva_LIBS += Com
+TESTS += testScenePva
+
 USR_CPPFLAGS += -DMPLE_TEST_URDF_PATH=\"$(abspath $(TOP)/description/ur5e.urdf)\"
 TESTPROD_HOST += testFK
 testFK_SRCS += test_fk.cpp

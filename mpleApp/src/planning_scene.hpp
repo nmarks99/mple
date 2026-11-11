@@ -82,10 +82,6 @@ struct SceneObject {
 
     std::string name;
     Pose pose;                                               // SceneObject pose in world frame
-
-    // FIX: Remove. Replaced with the std::vector<SceneShape>
-    // std::vector<std::variant<Box, Sphere, Cylinder>> shapes; // One or more shapes
-    // std::vector<Pose> shape_poses;                           // Pose of each shape in SceneObject frame
     std::vector<SceneShape> shapes;
 
     void to_pvxs_value(pvxs::Value& value) const;
@@ -95,7 +91,10 @@ struct PlanningScene {
     static PlanningScene from_json(std::istream& input);
     static PlanningScene from_json(const std::string& file_path);
 
-    pvxs::Value to_pvxs_value() const;
+    // Throws std::invalid_argument if the value fails validation
+    static PlanningScene from_pvxs_value(const pvxs::Value& value);
+
+    pvxs::Value to_pvxs_value(uint64_t revision) const;
 
     // Adds an object to the world. If an object with the same name is already
     // present, it is overwritten.
