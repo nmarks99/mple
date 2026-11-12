@@ -54,19 +54,19 @@ MAIN(testJson) {
 )json");
     const auto world = SceneDescription::from_json(input);
 
-    auto collision = world.check_point({0, 0, 0});
+    auto collision = world.ee_check_point({0, 0, 0});
     testOk(!collision, "Miss at (0, 0, 0)");
 
-    collision = world.check_point({3, 3, 0});
+    collision = world.ee_check_point({3, 3, 0});
     testOk(collision && *collision == "Box1", "Hit Box1 at (3, 3, 0)");
 
-    collision = world.check_point({-2, 2, 0});
+    collision = world.ee_check_point({-2, 2, 0});
     testOk(collision && *collision == "Ball1", "Hit Ball1 at (-2, 2, 0)");
 
-    collision = world.check_point({3, -2, 0});
+    collision = world.ee_check_point({3, -2, 0});
     testOk(collision && *collision == "Box2", "Hit Box2 at (3, -2, 0)");
 
-    collision = world.check_point({-3, -2, 0});
+    collision = world.ee_check_point({-3, -2, 0});
     testOk(!collision, "Miss at (-3, -2, 0)");
 
     return testDone();

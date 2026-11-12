@@ -77,6 +77,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         system_.state_dim = static_cast<size_t>(system_.model.nv);
         system_.base_frame_id = system_.model.getFrameId(model_config.base_frame, pinocchio::BODY);
         system_.ee_frame_id = system_.model.getFrameId(model_config.ee_frame, pinocchio::BODY);
+
+        // A frame's placement is relative to its parent joint. Joint 0 is the URDF root, so if the
+        // base frame hangs off joint 0 its placement is its fixed pose in the root frame (g_rb).
+        const auto& base_frame = system_.model.frames[system_.base_frame_id];
+        if (base_frame.parentJoint != 0) {
+            throw std::runtime_error("Base frame must be fixed to the URDF root: " + model_config.base_frame);
+        }
+        system_.g_rb = base_frame.placement;
     } catch (const std::exception& e) {
         std::cerr << "Failed to build system model from URDF: " << e.what() << std::endl;
         std::cerr << "MPLE aborting\n";
@@ -171,16 +179,21 @@ MpleDriver::SceneSnapshot MpleDriver::scene_snapshot() {
     return {scene_description_, collision_checker_};
 }
 
-std::optional<std::string> MpleDriver::check_state_collision(
-    const SceneDescription& scene, const std::vector<double>& state) {
+std::optional<std::string> MpleDriver::check_state_collision(const SceneSnapshot& snapshot,
+                                                             CollisionChecker::Workspace& ws,
+                                                             const std::vector<double>& state) {
 
+    // The EE point check stands in for tool geometry, which the robot model does not include yet
     auto pose = adapter_->fk(state);
     if (!pose) {
         pose = forward_kinematics(system_, state);
     }
-
     const Position position{pose->at(0), pose->at(1), pose->at(2)};
-    return scene.check_point(position);
+    if (auto hit = snapshot.scene->ee_check_point(position)) {
+        return "end effector collides with " + *hit;
+    }
+
+    return snapshot.checker->check(state, ws);
 }
 
 void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
@@ -239,6 +252,7 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
 
     auto scene_now = scene_snapshot();
+    auto ws = scene_now.checker->make_workspace();
 
     std::vector<double> start(request->start.begin(), request->start.end());
     if (start.empty()) {
@@ -248,8 +262,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
     PlanResult result = plan(
         start, goal,
-        [this, &scene_now](const std::vector<double>& state) {
-            return !check_state_collision(*scene_now.scene, state);
+        [this, &scene_now, &ws](const std::vector<double>& state) {
+            return !check_state_collision(scene_now, ws, state);
         });
 
     response.valid = result.valid;
@@ -438,6 +452,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
     }
 
     auto scene_now = scene_snapshot();
+    auto ws = scene_now.checker->make_workspace();
 
     // Collision, workspace, and joint limit checks require both joint
     // angles and TCP pose, hence why we need FK and IK depending on
@@ -445,7 +460,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
     std::optional<std::string> hit;
     if (!request->joint_waypoints.empty()) {
         for (const auto& wp : request->joint_waypoints) {
-            hit = check_state_collision(*scene_now.scene, wp);
+            hit = check_state_collision(scene_now, ws, wp);
             if (hit) {
                 break;
             }
@@ -460,8 +475,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
                 break;
             } else {
                 // TODO: check joint and workspace limits
-                Position p{wp[0], wp[1], wp[2]};
-                hit = scene_now.scene->check_point(p);
+                hit = check_state_collision(scene_now, ws, *joints);
                 if (hit) { break; }
             }
         }
@@ -469,7 +483,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
 
     if (hit) {
         response.valid = false;
-        response.description = "Collision with " + *hit;
+        response.description = "Collision: " + *hit;
     } else {
         response.valid = true;
         response.description = "No collisions detected";

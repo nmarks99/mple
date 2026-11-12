@@ -108,7 +108,7 @@ struct SceneDescription {
     // Checks if a point collides with any of the objects in the world
     // If there was a collision, the returned optional will contain the
     // string name of the object we collided with.
-    std::optional<std::string> check_point(const Position& point) const;
+    std::optional<std::string> ee_check_point(const Position& point) const;
 
     // Map of the objects in the world, keyed by name
     std::unordered_map<std::string, SceneObject> objects;

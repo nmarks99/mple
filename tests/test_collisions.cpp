@@ -42,7 +42,7 @@ MAIN(testCollisions) {
         }
     });
 
-    auto collision = world.check_point(point);
+    auto collision = world.ee_check_point(point);
     testOk1(collision.has_value());
     testOk1(*collision == "sphere1");
 
@@ -92,7 +92,7 @@ MAIN(testCollisions) {
         // { Pose { {0, 0, 0}, {0, 0, 0} } }
     // });
 //
-    // auto collision = world.check_point(point);
+    // auto collision = world.ee_check_point(point);
     // if (collision) {
         // std::cout << "Hit " << *collision << std::endl;
     // } else {

@@ -57,6 +57,20 @@ testFK_LIBS += pinocchio_parsers
 testFK_LIBS += pinocchio_default
 TESTS += testFK
 
+TESTPROD_HOST += testCollisionChecker
+testCollisionChecker_SRCS += test_collision_checker.cpp
+testCollisionChecker_SRCS += collisions.cpp
+testCollisionChecker_SRCS += scene.cpp
+testCollisionChecker_LIBS += pvxs
+testCollisionChecker_LIBS += pinocchio_collision
+testCollisionChecker_LIBS += coal
+testCollisionChecker_LIBS += pinocchio_parsers
+testCollisionChecker_LIBS += pinocchio_default
+testCollisionChecker_LIBS += Com
+testCollisionChecker_SYS_LIBS += boost_filesystem
+testCollisionChecker_SYS_LIBS += boost_serialization
+TESTS += testCollisionChecker
+
 TESTSCRIPTS_HOST += $(TESTS:%=%.t)
 
 include $(TOP)/configure/RULES

@@ -298,7 +298,7 @@ void SceneDescription::remove_object(const std::string& name) {
     objects.erase(name);
 }
 
-std::optional<std::string> SceneDescription::check_point(const Position& point) const {
+std::optional<std::string> SceneDescription::ee_check_point(const Position& point) const {
     for (auto& [_, obj] : objects) {
         for (size_t i = 0; i < obj.shapes.size(); i++) {
 
@@ -347,7 +347,7 @@ std::optional<std::string> SceneDescription::check_point(const Position& point) 
             } else if (auto* cylinder = std::get_if<Cylinder>(&shape.primitive)) {
                 // FIX:
                 (void)cylinder;
-                printf("[check_point] cylinder check not implemented yet\n");
+                printf("[ee_check_point] cylinder check not implemented yet\n");
             }
         }
     }

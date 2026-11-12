@@ -22,6 +22,7 @@ MAIN(testFK) {
     pinocchio::urdf::buildModel(urdf_path, system.model);
     system.base_frame_id = system.model.getFrameId("base", pinocchio::BODY);
     system.ee_frame_id = system.model.getFrameId("tool0", pinocchio::BODY);
+    system.g_rb = system.model.frames[system.base_frame_id].placement;
 
     const auto pose = forward_kinematics(system, std::vector<double>(test_joints.begin(), test_joints.end()));
 

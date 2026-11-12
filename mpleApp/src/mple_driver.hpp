@@ -403,7 +403,8 @@ class MpleDriver {
 
     SceneSnapshot scene_snapshot();
 
-    std::optional<std::string> check_state_collision(const SceneDescription& scene,
+    std::optional<std::string> check_state_collision(const SceneSnapshot& snapshot,
+                                                     CollisionChecker::Workspace& ws,
                                                      const std::vector<double>& state);
 
     void scene_objects_put_callback(pvxs::server::SharedPV& pv, std::unique_ptr<pvxs::server::ExecOp>&& op,
