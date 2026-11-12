@@ -16,7 +16,7 @@ MAIN(testFK) {
 
     std::array<double, 6> test_joints = {-M_PI/2, -M_PI/2, -M_PI/2, -M_PI/2, M_PI/2, 0.0};
 
-    constexpr const char* urdf_path = MPLE_TEST_URDF_PATH;
+    constexpr const char* urdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur5e.urdf";
     MpleSystemModel system;
 
     pinocchio::urdf::buildModel(urdf_path, system.model);

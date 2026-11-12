@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <string>
 
@@ -14,16 +15,19 @@
 MAIN(testPinocchioCollisions) {
     testPlan(3);
 
-    const std::string urdf_filename = "/home/beams0/NMARKS/devel/mple/description/ur5e.urdf";
+    const std::string urdf_filename = MPLE_TEST_DESCRIPTION_DIR "/ur5e.urdf";
 
     pinocchio::Model model;
-    pinocchio::urdf::buildModel(urdf_filename, model);
+    pinocchio::GeometryModel geom_model;
+    try {
+        pinocchio::urdf::buildModel(urdf_filename, model);
+        pinocchio::urdf::buildGeom(model, urdf_filename, pinocchio::COLLISION, geom_model,
+                                   MPLE_TEST_DESCRIPTION_DIR);
+    } catch (const std::exception& e) {
+        testAbort("Failed to load robot model: %s", e.what());
+    }
 
     pinocchio::Data data(model);
-
-    pinocchio::GeometryModel geom_model;
-    pinocchio::urdf::buildGeom(model, urdf_filename, pinocchio::COLLISION, geom_model,
-                               "/home/beams0/NMARKS/devel/mple/description");
 
     testOk1(geom_model.ngeoms == 7);
 

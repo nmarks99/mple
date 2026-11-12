@@ -7,7 +7,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <nlohmann/json.hpp>
-#include "planning_scene.hpp"
+#include "scene.hpp"
 
 SceneObject SceneObject::from_quicktype(const std::string& name, const quicktype::SceneObjectValue& q_obj) {
 
@@ -171,8 +171,8 @@ SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
     return obj;
 }
 
-PlanningScene PlanningScene::from_pvxs_value(const pvxs::Value& value) {
-    PlanningScene scene;
+SceneDescription SceneDescription::from_pvxs_value(const pvxs::Value& value) {
+    SceneDescription scene;
     std::unordered_set<std::string> names;
 
     auto objects = value["objects"].as<pvxs::shared_array<const pvxs::Value>>();
@@ -243,7 +243,7 @@ void SceneObject::to_pvxs_value(pvxs::Value& value) const {
     value["shapes"] = shape_values.freeze();
 }
 
-pvxs::Value PlanningScene::to_pvxs_value(uint64_t revision) const {
+pvxs::Value SceneDescription::to_pvxs_value(uint64_t revision) const {
     auto top = scene_objects_pva_type().create();
 
     pvxs::shared_array<pvxs::Value> objects(this->objects.size());
@@ -259,9 +259,9 @@ pvxs::Value PlanningScene::to_pvxs_value(uint64_t revision) const {
     return top;
 }
 
-PlanningScene PlanningScene::from_json(std::istream& input) {
+SceneDescription SceneDescription::from_json(std::istream& input) {
     using json = nlohmann::json;
-    PlanningScene world{};
+    SceneDescription world{};
     quicktype::SceneObjects objects = json::parse(input);
     for (auto& ob : objects) {
         world.add_object(SceneObject::from_quicktype(ob.first, ob.second));
@@ -269,7 +269,7 @@ PlanningScene PlanningScene::from_json(std::istream& input) {
     return world;
 }
 
-PlanningScene PlanningScene::from_json(const std::string& file_path) {
+SceneDescription SceneDescription::from_json(const std::string& file_path) {
     std::ifstream file(file_path);
     if (!file) {
         throw std::invalid_argument("Invalid file path provided " + file_path);
@@ -277,7 +277,7 @@ PlanningScene PlanningScene::from_json(const std::string& file_path) {
     return from_json(file);
 }
 
-void PlanningScene::add_from_json(const std::string& file_path) {
+void SceneDescription::add_from_json(const std::string& file_path) {
     using json = nlohmann::json;
     std::ifstream file(file_path);
     if (!file) {
@@ -289,16 +289,16 @@ void PlanningScene::add_from_json(const std::string& file_path) {
     }
 }
 
-void PlanningScene::add_object(SceneObject obj) {
+void SceneDescription::add_object(SceneObject obj) {
     std::string name = obj.name;
     objects.insert_or_assign(std::move(name), std::move(obj));
 }
 
-void PlanningScene::remove_object(const std::string& name) {
+void SceneDescription::remove_object(const std::string& name) {
     objects.erase(name);
 }
 
-std::optional<std::string> PlanningScene::check_point(const Position& point) const {
+std::optional<std::string> SceneDescription::check_point(const Position& point) const {
     for (auto& [_, obj] : objects) {
         for (size_t i = 0; i < obj.shapes.size(); i++) {
 

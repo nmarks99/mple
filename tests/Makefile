@@ -18,14 +18,14 @@ TESTS += testTrajectory
 
 TESTPROD_HOST += testCollisions
 testCollisions_SRCS += test_collisions.cpp
-testCollisions_SRCS += planning_scene.cpp
+testCollisions_SRCS += scene.cpp
 testCollisions_LIBS += pvxs
 testCollisions_LIBS += Com
 TESTS += testCollisions
 
 TESTPROD_HOST += testCollisionsJson
 testCollisionsJson_SRCS += test_collisions_json.cpp
-testCollisionsJson_SRCS += planning_scene.cpp
+testCollisionsJson_SRCS += scene.cpp
 testCollisionsJson_LIBS += pvxs
 testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
@@ -43,12 +43,12 @@ TESTS += testPinocchioCollisions
 
 TESTPROD_HOST += testScenePva
 testScenePva_SRCS += test_scene_pva.cpp
-testScenePva_SRCS += planning_scene.cpp
+testScenePva_SRCS += scene.cpp
 testScenePva_LIBS += pvxs
 testScenePva_LIBS += Com
 TESTS += testScenePva
 
-USR_CPPFLAGS += -DMPLE_TEST_URDF_PATH=\"$(abspath $(TOP)/description/ur5e.urdf)\"
+USR_CPPFLAGS += -DMPLE_TEST_DESCRIPTION_DIR=\"$(abspath $(TOP)/description)\"
 TESTPROD_HOST += testFK
 testFK_SRCS += test_fk.cpp
 testFK_SRCS += kinematics.cpp

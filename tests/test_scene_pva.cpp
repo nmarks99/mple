@@ -7,7 +7,7 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 
-#include "planning_scene.hpp"
+#include "scene.hpp"
 
 namespace {
 
@@ -80,7 +80,7 @@ void expect_invalid(const char* desc, F modify) {
     auto specs = valid_objects();
     modify(specs);
     try {
-        PlanningScene::from_pvxs_value(build(specs));
+        SceneDescription::from_pvxs_value(build(specs));
         testFail("%s: no exception thrown", desc);
     } catch (const std::invalid_argument& e) {
         testPass("%s: %s", desc, e.what());
@@ -112,7 +112,7 @@ bool same_primitive(const ScenePrimitive& a, const ScenePrimitive& b) {
 }
 
 void test_round_trip() {
-    PlanningScene scene;
+    SceneDescription scene;
     scene.add_object(SceneObject{
         "multi",
         Pose{{1.5, -2.5, 0.25}, {0.1, 0.2, 0.3}},
@@ -126,7 +126,7 @@ void test_round_trip() {
     const auto value = scene.to_pvxs_value(7);
     testOk(value["revision"].as<uint64_t>() == 7, "revision serialized");
 
-    const auto result = PlanningScene::from_pvxs_value(value);
+    const auto result = SceneDescription::from_pvxs_value(value);
     testOk(result.objects.size() == 1, "round trip object count");
 
     const auto& in = scene.objects.at("multi");
@@ -151,11 +151,11 @@ void test_round_trip() {
 }
 
 void test_empty_scene() {
-    PlanningScene scene;
+    SceneDescription scene;
     const auto value = scene.to_pvxs_value(0);
     testOk(value["objects"].as<pvxs::shared_array<const pvxs::Value>>().empty(), "empty scene serializes");
     try {
-        const auto result = PlanningScene::from_pvxs_value(value);
+        const auto result = SceneDescription::from_pvxs_value(value);
         testOk(result.objects.empty(), "empty scene parses");
     } catch (const std::exception& e) {
         testFail("empty scene parses: %s", e.what());
@@ -164,7 +164,7 @@ void test_empty_scene() {
 
 void test_valid_scene() {
     try {
-        const auto result = PlanningScene::from_pvxs_value(build(valid_objects()));
+        const auto result = SceneDescription::from_pvxs_value(build(valid_objects()));
         testOk(result.objects.size() == 2, "valid scene parses");
     } catch (const std::exception& e) {
         testFail("valid scene parses: %s", e.what());

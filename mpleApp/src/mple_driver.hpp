@@ -17,7 +17,7 @@
 
 #include "mple_adapter_registry.hpp"
 #include "mple_system_model.hpp"
-#include "planning_scene.hpp"
+#include "scene.hpp"
 
 class MpleDriver {
   public:
@@ -26,7 +26,7 @@ class MpleDriver {
   private:
     MpleAdapter* adapter_;
     std::mutex scene_mutex_;
-    std::shared_ptr<const PlanningScene> planning_scene_;
+    std::shared_ptr<const SceneDescription> scene_description_;
     MpleSystemModel system_;
 
     pvxs::Value status_value_;
@@ -387,9 +387,9 @@ class MpleDriver {
         }
     };
 
-    std::shared_ptr<const PlanningScene> scene_snapshot();
+    std::shared_ptr<const SceneDescription> scene_snapshot();
 
-    std::optional<std::string> check_state_collision(const PlanningScene& scene,
+    std::optional<std::string> check_state_collision(const SceneDescription& scene,
                                                      const std::vector<double>& state);
 
     void scene_objects_put_callback(pvxs::server::SharedPV& pv, std::unique_ptr<pvxs::server::ExecOp>&& op,

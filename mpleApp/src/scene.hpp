@@ -30,7 +30,6 @@ struct Position {
     double z = 0.0;
 };
 
-// Euler angles
 struct Orientation {
     Orientation() = default;
     Orientation(const std::vector<double>& ori) {
@@ -87,12 +86,12 @@ struct SceneObject {
     void to_pvxs_value(pvxs::Value& value) const;
 };
 
-struct PlanningScene {
-    static PlanningScene from_json(std::istream& input);
-    static PlanningScene from_json(const std::string& file_path);
+struct SceneDescription {
+    static SceneDescription from_json(std::istream& input);
+    static SceneDescription from_json(const std::string& file_path);
 
     // Throws std::invalid_argument if the value fails validation
-    static PlanningScene from_pvxs_value(const pvxs::Value& value);
+    static SceneDescription from_pvxs_value(const pvxs::Value& value);
 
     pvxs::Value to_pvxs_value(uint64_t revision) const;
 

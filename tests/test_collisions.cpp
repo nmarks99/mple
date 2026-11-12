@@ -1,14 +1,14 @@
 #include <epicsUnitTest.h>
 #include <testMain.h>
 
-#include "planning_scene.hpp"
+#include "scene.hpp"
 
 MAIN(testCollisions) {
     testPlan(2);
 
     Position point(-2, 2 ,0);
 
-    PlanningScene world;
+    SceneDescription world;
     world.add_object(SceneObject {
         "box1",
         Pose { {1, 2, 0}, {0, 0, 0} },
@@ -69,7 +69,7 @@ MAIN(testCollisions) {
         // return EXIT_FAILURE;
     // }
 //
-    // PlanningScene world;
+    // SceneDescription world;
 //
     // world.add_object(SceneObject {
         // "box1",

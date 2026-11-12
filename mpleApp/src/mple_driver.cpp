@@ -82,15 +82,15 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     }
 
     // Load scene objects file
-    auto initial_scene = std::make_shared<PlanningScene>();
+    auto initial_scene = std::make_shared<SceneDescription>();
     if (!scene_objects_file.empty()) {
         initial_scene->add_from_json(scene_objects_file);
         printf("Loaded scene objects from json file %s\n", scene_objects_file.c_str());
     }
-    planning_scene_ = initial_scene;
+    scene_description_ = initial_scene;
 
     // Set initial value of scene objects PV from planning scene
-    scene_objects_value_ = planning_scene_->to_pvxs_value(scene_revision_);
+    scene_objects_value_ = scene_description_->to_pvxs_value(scene_revision_);
     scene_objects_pv_.onPut([this](pvxs::server::SharedPV& pv,
                                    std::unique_ptr<pvxs::server::ExecOp>&& op,
                                    pvxs::Value&& value) {
@@ -161,13 +161,13 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
-std::shared_ptr<const PlanningScene> MpleDriver::scene_snapshot() {
+std::shared_ptr<const SceneDescription> MpleDriver::scene_snapshot() {
     std::lock_guard<std::mutex> lock(scene_mutex_);
-    return planning_scene_;
+    return scene_description_;
 }
 
 std::optional<std::string> MpleDriver::check_state_collision(
-    const PlanningScene& scene, const std::vector<double>& state) {
+    const SceneDescription& scene, const std::vector<double>& state) {
 
     auto pose = adapter_->fk(state);
     if (!pose) {
@@ -181,10 +181,10 @@ std::optional<std::string> MpleDriver::check_state_collision(
 void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
                                             std::unique_ptr<pvxs::server::ExecOp>&& op,
                                             pvxs::Value&& put_value) {
-    std::shared_ptr<const PlanningScene> new_scene;
+    std::shared_ptr<const SceneDescription> new_scene;
     uint64_t submitted_revision = 0;
     try {
-        new_scene = std::make_shared<const PlanningScene>(PlanningScene::from_pvxs_value(put_value));
+        new_scene = std::make_shared<const SceneDescription>(SceneDescription::from_pvxs_value(put_value));
         submitted_revision = put_value["revision"].as<uint64_t>();
     } catch (const std::exception& e) {
         op->error(std::string("Invalid scene: ") + e.what());
@@ -200,7 +200,7 @@ void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
     }
 
     auto new_value = new_scene->to_pvxs_value(scene_revision_ + 1);
-    planning_scene_ = std::move(new_scene);
+    scene_description_ = std::move(new_scene);
     ++scene_revision_;
     scene_objects_value_ = new_value;
     pv.post(scene_objects_value_);
