@@ -3,15 +3,7 @@ TOP=../
 include $(TOP)/configure/CONFIG
 
 USR_CXXFLAGS += -std=c++17
-USR_CPPFLAGS += -DBOOST_MPL_LIMIT_LIST_SIZE=30
-USR_CPPFLAGS += -DBOOST_MPL_LIMIT_VECTOR_SIZE=30
-USR_CPPFLAGS += -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
-USR_CPPFLAGS += -DBOOST_FUSION_INVOKE_MAX_ARITY=12
-USR_CPPFLAGS += -DPINOCCHIO_ENABLE_TEMPLATE_INSTANTIATION
-USR_CPPFLAGS += -DPINOCCHIO_WITH_URDFDOM
-USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_MAJOR_VERSION=3
-USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_MINOR_VERSION=0
-USR_CPPFLAGS += -DPINOCCHIO_URDFDOM_HEADERS_PATCH_VERSION=1
+USR_CPPFLAGS += $(MPLE_SUPPORT_CPPFLAGS)
 
 USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
 
@@ -37,6 +29,17 @@ testCollisionsJson_SRCS += planning_scene.cpp
 testCollisionsJson_LIBS += pvxs
 testCollisionsJson_LIBS += Com
 TESTS += testCollisionsJson
+
+TESTPROD_HOST += testPinocchioCollisions
+testPinocchioCollisions_SRCS += test_pinocchio_collisions.cpp
+testPinocchioCollisions_LIBS += pinocchio_collision
+testPinocchioCollisions_LIBS += coal
+testPinocchioCollisions_LIBS += pinocchio_parsers
+testPinocchioCollisions_LIBS += pinocchio_default
+testPinocchioCollisions_SYS_LIBS += boost_filesystem
+testPinocchioCollisions_SYS_LIBS += boost_serialization
+testPinocchioCollisions_LIBS += Com
+TESTS += testPinocchioCollisions
 
 TESTPROD_HOST += testScenePva
 testScenePva_SRCS += test_scene_pva.cpp

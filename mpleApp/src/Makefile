@@ -6,10 +6,7 @@ include $(TOP)/configure/CONFIG
 
 # Requires C++17
 USR_CXXFLAGS += -std=c++17
-USR_CPPFLAGS += -DBOOST_MPL_LIMIT_LIST_SIZE=30
-USR_CPPFLAGS += -DBOOST_MPL_LIMIT_VECTOR_SIZE=30
-USR_CPPFLAGS += -DBOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
-USR_CPPFLAGS += -DBOOST_FUSION_INVOKE_MAX_ARITY=12
+USR_CPPFLAGS += $(MPLE_SUPPORT_CPPFLAGS)
 
 # Define IOC library name
 LIBRARY_IOC += mple
@@ -31,11 +28,14 @@ USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
 mple_LIBS += toppra
 mple_LIBS += ompl
 mple_SYS_LIBS += boost_serialization
+mple_SYS_LIBS += boost_filesystem
 mple_LIBS += asyn
 mple_LIBS += lua
 mple_LIBS += pvxs
 mple_LIBS += pinocchio_default
 mple_LIBS += pinocchio_parsers
+mple_LIBS += pinocchio_collision
+mple_LIBS += coal
 mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
