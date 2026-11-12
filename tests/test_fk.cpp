@@ -20,7 +20,6 @@ MAIN(testFK) {
     MpleSystemModel system;
 
     pinocchio::urdf::buildModel(urdf_path, system.model);
-    system.data = pinocchio::Data(system.model);
     system.base_frame_id = system.model.getFrameId("base", pinocchio::BODY);
     system.ee_frame_id = system.model.getFrameId("tool0", pinocchio::BODY);
 

@@ -17,6 +17,7 @@
 
 #include "mple_adapter_registry.hpp"
 #include "mple_system_model.hpp"
+#include "collisions.hpp"
 #include "scene.hpp"
 
 class MpleDriver {
@@ -25,27 +26,34 @@ class MpleDriver {
 
   private:
     MpleAdapter* adapter_;
-    std::mutex scene_mutex_;
-    std::shared_ptr<const SceneDescription> scene_description_;
     MpleSystemModel system_;
 
-    pvxs::Value status_value_;
-    pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
-
+    // Scene stuff
+    std::mutex scene_mutex_;
+    std::shared_ptr<const SceneDescription> scene_description_;
+    std::shared_ptr<const CollisionChecker> collision_checker_;
     uint64_t scene_revision_ = 0;
     pvxs::Value scene_objects_value_;
     pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildMailbox();
 
+    // Execution (motion) state
+    // Could be expanded to show running for "long" running operations (e.g. planning)
     enum class ExecutionState {
         Idle,
         Running,
         StopRequested,
     };
-
-    pvxs::Value stop_value_;
     std::atomic<ExecutionState> execution_state_ = ExecutionState::Idle;
+
+    // Status PV
+    pvxs::Value status_value_;
+    pvxs::server::SharedPV status_pv_ = pvxs::server::SharedPV::buildReadonly();
+
+    // Stop PV
+    pvxs::Value stop_value_;
     pvxs::server::SharedPV stop_pv_ = pvxs::server::SharedPV::buildMailbox();
 
+    // PVs for all our provided services (via RPCs)
     pvxs::server::SharedPV plan_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV validate_pv_ = pvxs::server::SharedPV::buildReadonly();
     pvxs::server::SharedPV execute_pv_ = pvxs::server::SharedPV::buildReadonly();
@@ -387,7 +395,13 @@ class MpleDriver {
         }
     };
 
-    std::shared_ptr<const SceneDescription> scene_snapshot();
+
+    struct SceneSnapshot {
+        std::shared_ptr<const SceneDescription> scene;
+        std::shared_ptr<const CollisionChecker> checker;
+    };
+
+    SceneSnapshot scene_snapshot();
 
     std::optional<std::string> check_state_collision(const SceneDescription& scene,
                                                      const std::vector<double>& state);

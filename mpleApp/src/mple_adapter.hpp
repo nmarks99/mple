@@ -8,6 +8,7 @@
 /// \brief Stores configuration information needed to build
 /// the MPLE system model.
 struct MpleModelConfig {
+    std::string description_dir;
     std::string urdf_path;
     std::string base_frame;
     std::string ee_frame;

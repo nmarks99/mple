@@ -3,7 +3,8 @@ local osi = require("osi")
 
 function config()
     return {
-        urdf = MPLE .. "/description/ur5e.urdf",
+        description_dir = MPLE .. "/description",
+        urdf = "ur5e.urdf",
         base_frame = "base",
         ee_frame = "tool0"
     }

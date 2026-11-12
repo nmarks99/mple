@@ -59,12 +59,20 @@ class LuaMpleAdapter : public MpleAdapter {
 
         MpleModelConfig config;
 
+        lua_getfield(L, -1, "description_dir");
+        if (lua_type(L, -1) != LUA_TSTRING) {
+            lua_pop(L, 1);
+            throw std::runtime_error("Model configuration field 'description_dir' must be a string");
+        }
+        config.description_dir = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
         lua_getfield(L, -1, "urdf");
         if (lua_type(L, -1) != LUA_TSTRING) {
             lua_pop(L, 1);
             throw std::runtime_error("Model configuration field 'urdf' must be a string");
         }
-        config.urdf_path = lua_tostring(L, -1);
+        config.urdf_path = config.description_dir + "/" + lua_tostring(L, -1);
         lua_pop(L, 1);
 
         lua_getfield(L, -1, "base_frame");

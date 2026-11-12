@@ -62,6 +62,9 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     auto model_config = adapter_->config();
     try {
         pinocchio::urdf::buildModel(model_config.urdf_path, system_.model);
+        pinocchio::urdf::buildGeom(
+            system_.model, model_config.urdf_path,
+            pinocchio::COLLISION, system_.geom_model, model_config.description_dir);
         if (!system_.model.existFrame(model_config.base_frame, pinocchio::BODY)) {
             throw std::runtime_error("Base frame not found: " + model_config.base_frame);
         }
@@ -72,7 +75,6 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
             throw std::runtime_error("MPLE requires Pinocchio models with nq == nv");
         }
         system_.state_dim = static_cast<size_t>(system_.model.nv);
-        system_.data = pinocchio::Data(system_.model);
         system_.base_frame_id = system_.model.getFrameId(model_config.base_frame, pinocchio::BODY);
         system_.ee_frame_id = system_.model.getFrameId(model_config.ee_frame, pinocchio::BODY);
     } catch (const std::exception& e) {
@@ -81,13 +83,16 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         return;
     }
 
-    // Load scene objects file
+    // Load scene objects file and create SceneDescription
     auto initial_scene = std::make_shared<SceneDescription>();
     if (!scene_objects_file.empty()) {
         initial_scene->add_from_json(scene_objects_file);
         printf("Loaded scene objects from json file %s\n", scene_objects_file.c_str());
     }
     scene_description_ = initial_scene;
+
+    // Create collision checker
+    collision_checker_ = std::make_shared<CollisionChecker>(system_, *scene_description_);
 
     // Set initial value of scene objects PV from planning scene
     scene_objects_value_ = scene_description_->to_pvxs_value(scene_revision_);
@@ -161,9 +166,9 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
-std::shared_ptr<const SceneDescription> MpleDriver::scene_snapshot() {
+MpleDriver::SceneSnapshot MpleDriver::scene_snapshot() {
     std::lock_guard<std::mutex> lock(scene_mutex_);
-    return scene_description_;
+    return {scene_description_, collision_checker_};
 }
 
 std::optional<std::string> MpleDriver::check_state_collision(
@@ -182,9 +187,11 @@ void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
                                             std::unique_ptr<pvxs::server::ExecOp>&& op,
                                             pvxs::Value&& put_value) {
     std::shared_ptr<const SceneDescription> new_scene;
+    std::shared_ptr<const CollisionChecker> new_checker;
     uint64_t submitted_revision = 0;
     try {
         new_scene = std::make_shared<const SceneDescription>(SceneDescription::from_pvxs_value(put_value));
+        new_checker = std::make_shared<const CollisionChecker>(system_, *new_scene);
         submitted_revision = put_value["revision"].as<uint64_t>();
     } catch (const std::exception& e) {
         op->error(std::string("Invalid scene: ") + e.what());
@@ -201,6 +208,7 @@ void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
 
     auto new_value = new_scene->to_pvxs_value(scene_revision_ + 1);
     scene_description_ = std::move(new_scene);
+    collision_checker_ = std::move(new_checker);
     ++scene_revision_;
     scene_objects_value_ = new_value;
     pv.post(scene_objects_value_);
@@ -230,7 +238,7 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    auto scene = scene_snapshot();
+    auto scene_now = scene_snapshot();
 
     std::vector<double> start(request->start.begin(), request->start.end());
     if (start.empty()) {
@@ -240,8 +248,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
     PlanResult result = plan(
         start, goal,
-        [this, &scene](const std::vector<double>& state) {
-            return !check_state_collision(*scene, state);
+        [this, &scene_now](const std::vector<double>& state) {
+            return !check_state_collision(*scene_now.scene, state);
         });
 
     response.valid = result.valid;
@@ -429,7 +437,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
         return;
     }
 
-    auto scene = scene_snapshot();
+    auto scene_now = scene_snapshot();
 
     // Collision, workspace, and joint limit checks require both joint
     // angles and TCP pose, hence why we need FK and IK depending on
@@ -437,7 +445,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
     std::optional<std::string> hit;
     if (!request->joint_waypoints.empty()) {
         for (const auto& wp : request->joint_waypoints) {
-            hit = check_state_collision(*scene, wp);
+            hit = check_state_collision(*scene_now.scene, wp);
             if (hit) {
                 break;
             }
@@ -453,7 +461,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
             } else {
                 // TODO: check joint and workspace limits
                 Position p{wp[0], wp[1], wp[2]};
-                hit = scene->check_point(p);
+                hit = scene_now.scene->check_point(p);
                 if (hit) { break; }
             }
         }

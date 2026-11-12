@@ -42,6 +42,7 @@ mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 mple_SRCS += mple_driver.cpp
 mple_SRCS += trajectory.cpp
 mple_SRCS += kinematics.cpp
+mple_SRCS += collisions.cpp
 mple_SRCS += scene.cpp
 mple_SRCS += lua_mple_adapter.cpp
 mple_SRCS += mple_adapter_registry.cpp
