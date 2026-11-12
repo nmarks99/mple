@@ -41,6 +41,34 @@ class Mple:
         ]
         return SceneObjects(objects=objects, revision=value["revision"])
 
+    def set_scene_objects(self, scene: SceneObjects, timeout: float = 5.0):
+        """Replace the complete planning scene.
+
+        scene.revision must match the IOC's current revision, otherwise the
+        put is rejected with p4p.client.thread.RemoteError.
+        """
+        value = {
+            "objects": [
+                {
+                    "name": obj.name,
+                    "position": list(obj.pose.position),
+                    "orientation": list(obj.pose.orientation),
+                    "shapes": [
+                        {
+                            "type": shape.shape_type,
+                            "position": list(shape.pose.position),
+                            "orientation": list(shape.pose.orientation),
+                            "dimensions": list(shape.dimensions),
+                        }
+                        for shape in obj.shapes
+                    ],
+                }
+                for obj in scene.objects
+            ],
+            "revision": scene.revision,
+        }
+        self.ctxt.put(f"{self.prefix}SceneObjects", value, timeout=timeout)
+
     def validate(self, joint_waypoints) -> bool:
         ValidateMsg = Value(Type([
             ('joint_waypoints', 'ad'),

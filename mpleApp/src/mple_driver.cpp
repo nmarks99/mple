@@ -91,6 +91,11 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
     // Set initial value of scene objects PV from planning scene
     scene_objects_value_ = planning_scene_->to_pvxs_value(scene_revision_);
+    scene_objects_pv_.onPut([this](pvxs::server::SharedPV& pv,
+                                   std::unique_ptr<pvxs::server::ExecOp>&& op,
+                                   pvxs::Value&& value) {
+        scene_objects_put_callback(pv, std::move(op), std::move(value));
+    });
     scene_objects_pv_.open(scene_objects_value_);
     pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
 
@@ -171,6 +176,35 @@ std::optional<std::string> MpleDriver::check_state_collision(
 
     const Position position{pose->at(0), pose->at(1), pose->at(2)};
     return scene.check_point(position);
+}
+
+void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
+                                            std::unique_ptr<pvxs::server::ExecOp>&& op,
+                                            pvxs::Value&& put_value) {
+    std::shared_ptr<const PlanningScene> new_scene;
+    uint64_t submitted_revision = 0;
+    try {
+        new_scene = std::make_shared<const PlanningScene>(PlanningScene::from_pvxs_value(put_value));
+        submitted_revision = put_value["revision"].as<uint64_t>();
+    } catch (const std::exception& e) {
+        op->error(std::string("Invalid scene: ") + e.what());
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(scene_mutex_);
+
+    if (submitted_revision != scene_revision_) {
+        op->error("Scene revision conflict: current revision is " + std::to_string(scene_revision_) +
+                  ", got " + std::to_string(submitted_revision));
+        return;
+    }
+
+    auto new_value = new_scene->to_pvxs_value(scene_revision_ + 1);
+    planning_scene_ = std::move(new_scene);
+    ++scene_revision_;
+    scene_objects_value_ = new_value;
+    pv.post(scene_objects_value_);
+    op->reply();
 }
 
 void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

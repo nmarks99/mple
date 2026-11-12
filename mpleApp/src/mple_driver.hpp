@@ -34,7 +34,7 @@ class MpleDriver {
 
     uint64_t scene_revision_ = 0;
     pvxs::Value scene_objects_value_;
-    pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildReadonly();
+    pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildMailbox();
 
     enum class ExecutionState {
         Idle,
@@ -391,6 +391,9 @@ class MpleDriver {
 
     std::optional<std::string> check_state_collision(const PlanningScene& scene,
                                                      const std::vector<double>& state);
+
+    void scene_objects_put_callback(pvxs::server::SharedPV& pv, std::unique_ptr<pvxs::server::ExecOp>&& op,
+                                    pvxs::Value&& put_value);
 
     void stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& put_value);
 
