@@ -30,6 +30,15 @@ class SceneObjects:
     objects: list[SceneObject]
     revision: int
 
+    def __getitem__(self, name: str) -> SceneObject:
+        for obj in self.objects:
+            if obj.name == name:
+                return obj
+        raise KeyError(name)
+
+    def __contains__(self, name: object) -> bool:
+        return any(obj.name == name for obj in self.objects)
+
     def __str__(self) -> str:
         lines = ["objects[]"]
         for obj in self.objects:
