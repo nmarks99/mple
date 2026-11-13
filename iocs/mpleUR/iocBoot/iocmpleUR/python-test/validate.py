@@ -2,12 +2,12 @@ from math import radians
 import numpy as np
 from epics import caget
 import time
-from mple import Mple
+from mple import MpleClient
 
 PREFIX = "mpleUR:"
 
 def main():
-    mple = Mple(f"{PREFIX}mple:")
+    mple = MpleClient(f"{PREFIX}mple:")
 
     count = 0
     while True:

@@ -1,10 +1,10 @@
-from mple import Mple
+from mple import MpleClient
 from epics import caget
 import numpy as np
 
 PREFIX = "mpleUR:"
 def main():
-    mple = Mple(f"{PREFIX}mple:")
+    mple = MpleClient(f"{PREFIX}mple:")
 
     goal = caget(f"{PREFIX}Receive:Joints")
     goal += 5

@@ -1,6 +1,6 @@
 import time
 
-from mple import Mple, Pose
+from mple import MpleClient, Pose
 
 PREFIX = "mpleUR:"
 OBJECT = "Ball1"
@@ -12,7 +12,7 @@ RATE = 50.0  # Hz
 
 
 def main():
-    mple = Mple(f"{PREFIX}mple:")
+    mple = MpleClient(f"{PREFIX}mple:")
 
     scene = mple.get_scene_objects()
     _, y0, z0 = scene[OBJECT].pose.position

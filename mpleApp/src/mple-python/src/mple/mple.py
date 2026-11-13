@@ -7,7 +7,7 @@ import numpy as np
 from mple.scene_objects import Pose, SceneObject, SceneObjects, SceneShape
 
 
-class Mple:
+class MpleClient:
     def __init__(self, prefix: str, connection_timeout: float = 1.0):
         self.prefix = prefix
         self.ctxt = Context("pva")

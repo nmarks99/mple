@@ -1,4 +1,4 @@
-from mple import Mple
+from mple import MpleClient
 from epics import caget
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation
 PREFIX = "mpleUR:"
 def main():
     print("construction...")
-    mple = Mple(PREFIX+"mple:")
+    mple = MpleClient(PREFIX+"mple:")
     print("done")
 
     print("getting joints...")

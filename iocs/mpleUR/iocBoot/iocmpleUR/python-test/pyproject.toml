@@ -10,3 +10,8 @@ dependencies = [
 
 [tool.uv.sources]
 mple = { path = "../../../../../../../../../beams/NMARKS/devel/mple/mpleApp/src/mple-python", editable=true}
+
+[dependency-groups]
+dev = [
+    "ipython>=9.18.1",
+]
