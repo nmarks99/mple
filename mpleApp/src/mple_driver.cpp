@@ -104,13 +104,16 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
 
     // Set initial value of scene objects PV from planning scene
     scene_objects_value_ = scene_description_->to_pvxs_value(scene_revision_);
+    eviz_markers_value_ = to_eviz_marker_value(*scene_description_);
     scene_objects_pv_.onPut([this](pvxs::server::SharedPV& pv,
                                    std::unique_ptr<pvxs::server::ExecOp>&& op,
                                    pvxs::Value&& value) {
         scene_objects_put_callback(pv, std::move(op), std::move(value));
     });
     scene_objects_pv_.open(scene_objects_value_);
+    eviz_markers_pv_.open(eviz_markers_value_);
     pvxs::ioc::server().addPV(prefix + "SceneObjects", scene_objects_pv_);
+    pvxs::ioc::server().addPV(prefix + "Markers", eviz_markers_pv_);
 
     // Create status PV
     // TODO: is this properly updated/should it have any more fields?
@@ -226,6 +229,10 @@ void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
     scene_objects_value_ = new_value;
     pv.post(scene_objects_value_);
     op->reply();
+
+    // also post the markers for eviz
+    eviz_markers_value_ = to_eviz_marker_value(*scene_description_);
+    eviz_markers_pv_.post(eviz_markers_value_);
 }
 
 void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

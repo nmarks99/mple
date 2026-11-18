@@ -27,3 +27,4 @@ deps/ompl/install/
 deps/pinocchio/install/
 *.local
 __pycache__/
+tmp/

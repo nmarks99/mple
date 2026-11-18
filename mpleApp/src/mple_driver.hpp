@@ -35,6 +35,8 @@ class MpleDriver {
     uint64_t scene_revision_ = 0;
     pvxs::Value scene_objects_value_;
     pvxs::server::SharedPV scene_objects_pv_ = pvxs::server::SharedPV::buildMailbox();
+    pvxs::Value eviz_markers_value_;
+    pvxs::server::SharedPV eviz_markers_pv_ = pvxs::server::SharedPV::buildReadonly();
 
     // Execution (motion) state
     // Could be expanded to show running for "long" running operations (e.g. planning)

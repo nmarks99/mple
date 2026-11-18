@@ -67,6 +67,9 @@ struct Cylinder {
 
 pvxs::TypeDef scene_objects_pva_type();
 
+// PVA structure for eviz markers (see eviz docs/markers.md)
+pvxs::TypeDef eviz_markers_pva_type();
+
 using ScenePrimitive = std::variant<Box, Sphere, Cylinder>;
 
 struct SceneShape {
@@ -113,3 +116,12 @@ struct SceneDescription {
     // Map of the objects in the world, keyed by name
     std::unordered_map<std::string, SceneObject> objects;
 };
+
+// Converts a scene to an eviz_markers_pva_type() value.
+// Each shape becomes one marker named "<object>_<n>" (n starting at 1) with its
+// pose composed with the object pose.
+pvxs::Value to_eviz_marker_value(const SceneDescription& scene);
+
+// Same as above from a scene_objects_pva_type() value.
+// Throws std::invalid_argument on invalid input.
+pvxs::Value to_eviz_marker_value(const pvxs::Value& value);

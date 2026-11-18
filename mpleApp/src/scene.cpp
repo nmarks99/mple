@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -80,6 +81,21 @@ pvxs::TypeDef scene_objects_pva_type() {
     return type;
 }
 
+pvxs::TypeDef eviz_markers_pva_type() {
+    namespace M = pvxs::members;
+    static const pvxs::TypeDef type{pvxs::TypeCode::Struct, {
+        M::StructA("markers", {
+            M::String("name"),
+            M::String("type"),
+            M::Float64A("position"),
+            M::Float64A("orientation"),
+            M::Float64A("dimensions"),
+            M::Float64A("color"),
+        }),
+    }};
+    return type;
+}
+
 namespace {
 
 pvxs::shared_array<const double> read_array(const pvxs::Value& value, const char* field,
@@ -138,6 +154,27 @@ ScenePrimitive read_primitive(const pvxs::Value& value, const std::string& conte
     return Cylinder{dims[0], dims[1]};
 }
 
+Eigen::Isometry3d pose_to_isometry(const Pose& pose) {
+    const Eigen::Matrix3d rotation =
+        (Eigen::AngleAxisd(pose.orientation.rz, Eigen::Vector3d::UnitZ())
+         * Eigen::AngleAxisd(pose.orientation.ry, Eigen::Vector3d::UnitY())
+         * Eigen::AngleAxisd(pose.orientation.rx, Eigen::Vector3d::UnitX())).toRotationMatrix();
+    Eigen::Isometry3d g = Eigen::Isometry3d::Identity();
+    g.linear() = rotation;
+    g.translation() = Eigen::Vector3d(pose.position.x, pose.position.y, pose.position.z);
+    return g;
+}
+
+// Inverse of pose_to_isometry: R = Rz(rz) * Ry(ry) * Rx(rx)
+Orientation rotation_to_rpy(const Eigen::Matrix3d& r) {
+    const double ry = std::asin(std::clamp(-r(2, 0), -1.0, 1.0));
+    if (std::abs(r(2, 0)) < 1.0 - 1e-9) {
+        return Orientation{std::atan2(r(2, 1), r(2, 2)), ry, std::atan2(r(1, 0), r(0, 0))};
+    }
+    // Gimbal lock: only rz - rx (or rz + rx) is defined, so set rx = 0
+    return Orientation{0.0, ry, std::atan2(-r(0, 1), r(1, 1))};
+}
+
 } // namespace
 
 SceneObject SceneObject::from_pvxs_value(const pvxs::Value& value) {
@@ -188,6 +225,59 @@ SceneDescription SceneDescription::from_pvxs_value(const pvxs::Value& value) {
     }
 
     return scene;
+}
+
+pvxs::Value to_eviz_marker_value(const pvxs::Value& value) {
+    return to_eviz_marker_value(SceneDescription::from_pvxs_value(value));
+}
+
+pvxs::Value to_eviz_marker_value(const SceneDescription& scene) {
+    auto top = eviz_markers_pva_type().create();
+
+    std::vector<pvxs::Value> markers;
+    for (const auto& [_, obj] : scene.objects) {
+        const Eigen::Isometry3d g_wo = pose_to_isometry(obj.pose);
+
+        for (size_t i = 0; i < obj.shapes.size(); ++i) {
+            const auto& shape = obj.shapes[i];
+            const Eigen::Isometry3d g_ws = g_wo * pose_to_isometry(shape.pose);
+            const Eigen::Vector3d p = g_ws.translation();
+            const Orientation o = rotation_to_rpy(g_ws.linear());
+
+            auto marker = top["markers"].allocMember();
+            marker["name"] = obj.name + "_" + std::to_string(i + 1);
+            marker["position"] = pvxs::shared_array<const double>{p.x(), p.y(), p.z()};
+            marker["orientation"] = pvxs::shared_array<const double>{o.rx, o.ry, o.rz};
+
+            std::visit([&marker](const auto& primitive) {
+                using T = std::decay_t<decltype(primitive)>;
+                if constexpr (std::is_same_v<T, Sphere>) {
+                    marker["type"] = "sphere";
+                    marker["dimensions"] = pvxs::shared_array<const double>{primitive.radius};
+                } else if constexpr (std::is_same_v<T, Box>) {
+                    marker["type"] = "box";
+                    marker["dimensions"] = pvxs::shared_array<const double>{
+                        primitive.width,
+                        primitive.height,
+                        primitive.depth
+                    };
+                } else if constexpr (std::is_same_v<T, Cylinder>) {
+                    marker["type"] = "cylinder";
+                    marker["dimensions"] = pvxs::shared_array<const double>{
+                        primitive.radius,
+                        primitive.height
+                    };
+                }
+            }, shape.primitive);
+
+            markers.push_back(std::move(marker));
+        }
+    }
+
+    pvxs::shared_array<pvxs::Value> marker_array(markers.size());
+    std::move(markers.begin(), markers.end(), marker_array.begin());
+    top["markers"] = marker_array.freeze();
+    return top;
 }
 
 void SceneObject::to_pvxs_value(pvxs::Value& value) const {
