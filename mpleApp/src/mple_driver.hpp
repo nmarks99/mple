@@ -420,6 +420,10 @@ class MpleDriver {
 
     void execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 
+    void execute_trajectory(const ExecuteRequest& req);
+
+    void execute_steps(const ExecuteRequest& req);
+
     void ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 
     void fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);

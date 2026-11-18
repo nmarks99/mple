@@ -31,8 +31,17 @@ class MpleAdapter {
     /// \brief Tells if the system is currenty in motion or not
     virtual bool moving() const = 0;
 
+    /// \brief True if the system executes trajectories with move, false if it uses move_step
+    virtual bool supports_trajectory() const = 0;
+
     /// \brief Starts execution of a time-scaled joint trajectory.
-    virtual bool move(const Trajectory& trajectory) const = 0;
+    virtual bool move(const Trajectory& trajectory) const { return false; }
+
+    /// \brief Starts synchronized motion to a single target configuration
+    ///
+    /// time is the segment duration, velocity is the peak speed of each joint
+    /// and acceleration is the acceleration of each joint.
+    virtual bool move_step(const TrajectoryPoint& target) const { return false; }
 
     /// \brief Computes forward kinematics for the system
     ///

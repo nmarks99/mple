@@ -1,5 +1,6 @@
 #include "trajectory.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <sstream>
@@ -81,6 +82,63 @@ Trajectory build_trajectory(const std::vector<std::vector<double>>& states,
         const auto acc = trajectory.eval_single(time, 2);
         pt.acceleration.assign(acc.begin(), acc.end());
         traj.push_back(pt);
+    }
+
+    return traj;
+}
+
+Trajectory build_step_trajectory(const std::vector<std::vector<double>>& states, double max_velocity,
+                                 double max_acceleration) {
+
+    if (states.size() < 2) {
+        throw std::invalid_argument("At least two waypoints are required");
+    }
+    if (!std::isfinite(max_velocity) || max_velocity <= 0.0) {
+        throw std::invalid_argument("Maximum velocity must be finite and positive");
+    }
+    if (!std::isfinite(max_acceleration) || max_acceleration <= 0.0) {
+        throw std::invalid_argument("Maximum acceleration must be finite and positive");
+    }
+
+    const size_t state_size = states[0].size();
+
+    Trajectory traj{};
+    traj.reserve(states.size() - 1);
+    for (size_t k = 1; k < states.size(); ++k) {
+        if (states[k].size() != state_size || states[k - 1].size() != state_size) {
+            throw std::invalid_argument("All waypoints must have the same size");
+        }
+
+        std::vector<double> dist(state_size);
+        double max_dist = 0.0;
+        for (size_t i = 0; i < state_size; ++i) {
+            dist[i] = std::abs(states[k][i] - states[k - 1][i]);
+            max_dist = std::max(max_dist, dist[i]);
+        }
+
+        TrajectoryPoint pt{};
+        pt.position = states[k];
+        pt.velocity.assign(state_size, 0.0);
+        pt.acceleration.assign(state_size, 0.0);
+
+        if (max_dist > 0.0) {
+            // Time-scale the joint with the largest distance, others follow the same profile
+            double t_acc = 0.0;
+            if (max_dist >= max_velocity * max_velocity / max_acceleration) {
+                t_acc = max_velocity / max_acceleration;
+                pt.time = max_dist / max_velocity + t_acc;
+            } else {
+                t_acc = std::sqrt(max_dist / max_acceleration);
+                pt.time = 2.0 * t_acc;
+            }
+            const double t_cruise_end = pt.time - t_acc;
+            for (size_t i = 0; i < state_size; ++i) {
+                pt.velocity[i] = dist[i] / t_cruise_end;
+                pt.acceleration[i] = pt.velocity[i] / t_acc;
+            }
+        }
+
+        traj.push_back(std::move(pt));
     }
 
     return traj;

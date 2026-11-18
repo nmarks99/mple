@@ -1,0 +1,10 @@
+SUPPORT = /APSshare/epics/synApps_6_3/support
+EPICS_BASE = /APSshare/epics/base-7.0.8
+
+LUA = /home/beams/NMARKS/devel/lua
+PVXS = /home/beams/NMARKS/.local/epics/pvxs
+URROBOT = /home/beams/NMARKS/devel/ur/urRobot
+ASYN = $(SUPPORT)/asyn-R4-44-2
+CALC = $(SUPPORT)/calc-R3-7-5
+STD = $(SUPPORT)/std-R3-6-4
+BUSY = $(SUPPORT)/busy-R1-7-4

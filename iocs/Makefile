@@ -1,8 +1,8 @@
 TOP = ..
 include $(TOP)/configure/CONFIG
 
-DIRS += mpleTest
-DIRS += mpleUR
+DIRS += rr
+DIRS += ur
 
 include $(TOP)/configure/RULES_TOP
 

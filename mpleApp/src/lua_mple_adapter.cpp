@@ -24,6 +24,10 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path, const char* macros) {
         throw std::runtime_error("Error compiling script file: " + std::string(script_path));
     }
 
+    if (!lua_function_exists("move") && !lua_function_exists("move_step")) {
+        throw std::runtime_error("Adapter script must define move or move_step: " + std::string(script_path));
+    }
+
     // TODO:
     // auto config = call_lua_method<SystemModel>("config");
 }
@@ -64,6 +68,17 @@ bool LuaMpleAdapter::moving() const {
     return ret.value();
 };
 
+bool LuaMpleAdapter::supports_trajectory() const { return lua_function_exists("move"); }
+
+bool LuaMpleAdapter::move_step(const TrajectoryPoint& target) const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto ret = call_lua_method<bool>("move_step", target);
+    if (!ret) {
+        throw std::runtime_error("Error calling lua move_step method");
+    }
+    return ret.value();
+}
+
 bool LuaMpleAdapter::move(const Trajectory& trajectory) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<bool>("move", trajectory);
@@ -92,12 +107,7 @@ std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>&
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
-    if (value) {
-        // TODO: fix hardcoded 6
-        if (value->size() != static_cast<size_t>(6))  {
-            throw std::runtime_error("Returned array from ik must be equal to the number of joints");
-        }
-    } else {
+    if (!value) {
         return MpleAdapter::ik(tcp_pose);
     }
     return value;

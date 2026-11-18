@@ -1,0 +1,27 @@
+{
+    "Ball1" : {
+        "pose" : {
+            "position" : [-0.033, -0.492, 0.488],
+            "orientation" : [0, 0, 0]
+        },
+        "shapes" : [
+            {
+                "type" : "sphere",
+                "dimensions": [0.01]
+            }
+        ]
+    },
+
+    "Ball2" : {
+        "pose" : {
+            "position" : [0.5, 0.2, 0.2],
+            "orientation" : [0, 0, 0]
+        },
+        "shapes" : [
+            {
+                "type" : "sphere",
+                "dimensions": [0.03]
+            }
+        ]
+    }
+}

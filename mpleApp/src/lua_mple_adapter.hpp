@@ -18,13 +18,22 @@ class LuaMpleAdapter : public MpleAdapter {
     std::vector<double> get_state() const override;
     void stop() const override;
     bool moving() const override;
+    bool supports_trajectory() const override;
     bool move(const Trajectory& trajectory) const override;
+    bool move_step(const TrajectoryPoint& target) const override;
     std::optional<std::vector<double>> fk(const std::vector<double>& joint_angles) const override;
     std::optional<std::vector<double>> ik(const std::vector<double>& tcp_pose) const override;
 
   private:
     lua_State* lua_state_;
     mutable std::recursive_mutex mutex_;
+
+    bool lua_function_exists(const char* fn_name) const {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        const int type = lua_getglobal(lua_state_, fn_name);
+        lua_pop(lua_state_, 1);
+        return type == LUA_TFUNCTION;
+    }
 
     std::vector<double> lua_table_to_vector_double(lua_State* L) const {
         if (!lua_istable(L, -1)) {
@@ -94,43 +103,42 @@ class LuaMpleAdapter : public MpleAdapter {
         return config;
     }
 
+    void lua_push_vector(const std::vector<double>& v) const {
+        lua_newtable(lua_state_);
+        for (size_t i = 0; i < v.size(); ++i) {
+            lua_pushnumber(lua_state_, v[i]);
+            lua_rawseti(lua_state_, -2, i + 1);
+        }
+    }
+
+    void lua_push_trajectory_point(const TrajectoryPoint& pt) const {
+        lua_newtable(lua_state_);
+        lua_pushnumber(lua_state_, pt.time);
+        lua_setfield(lua_state_, -2, "time");
+        lua_push_vector(pt.position);
+        lua_setfield(lua_state_, -2, "position");
+        lua_push_vector(pt.velocity);
+        lua_setfield(lua_state_, -2, "velocity");
+        lua_push_vector(pt.acceleration);
+        lua_setfield(lua_state_, -2, "acceleration");
+    }
+
     template <typename T>
     void lua_push_args (T val) const {
         if constexpr (std::is_arithmetic_v<T>) {
             lua_pushnumber(lua_state_, val);
         } else if constexpr (std::is_same_v<T, std::vector<double>>) {
-            // create lua table and fill in with waypoint
-            lua_newtable(lua_state_);
-            for (size_t i = 0; i < val.size(); i++) {
-                lua_pushnumber(lua_state_, val[i]);
-                lua_rawseti(lua_state_, -2, i + 1);
-            }
+            lua_push_vector(val);
+        } else if constexpr (std::is_same_v<T, TrajectoryPoint>) {
+            lua_push_trajectory_point(val);
         } else if constexpr (std::is_same_v<T, Trajectory>) {
             lua_newtable(lua_state_);
             for (size_t i = 0; i < val.size(); ++i) {
-                const auto& pt = val[i];
-                lua_newtable(lua_state_);
-
-                lua_pushnumber(lua_state_, pt.time);
-                lua_setfield(lua_state_, -2, "time");
-
-                auto pushVec = [this](const std::vector<double>& v) {
-                    lua_newtable(lua_state_);
-                    for (size_t j = 0; j < v.size(); ++j) {
-                        lua_pushnumber(lua_state_, v[j]);
-                        lua_rawseti(lua_state_, -2, j + 1);
-                    }
-                };
-
-                pushVec(pt.position);
-                lua_setfield(lua_state_, -2, "position");
-                pushVec(pt.velocity);
-                lua_setfield(lua_state_, -2, "velocity");
-                pushVec(pt.acceleration);
-                lua_setfield(lua_state_, -2, "acceleration");
-
+                lua_push_trajectory_point(val[i]);
                 lua_rawseti(lua_state_, -2, i + 1);
             }
+        } else {
+            static_assert(sizeof(T) == 0, "Unsupported Lua argument type");
         }
     }
 
@@ -142,9 +150,7 @@ class LuaMpleAdapter : public MpleAdapter {
         // Return value
         T value{};
 
-        // Check that the function exists
-        int result = lua_getglobal(lua_state_, fn_name);
-        if (result != LUA_TFUNCTION) {
+        if (lua_getglobal(lua_state_, fn_name) != LUA_TFUNCTION) {
             lua_pop(lua_state_, 1);
             return std::nullopt;
         }

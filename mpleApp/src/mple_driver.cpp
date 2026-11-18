@@ -1,4 +1,6 @@
 #include <thread>
+#include <chrono>
+#include <cmath>
 #include <charconv>
 #include <optional>
 #include "mple_driver.hpp"
@@ -342,6 +344,13 @@ void MpleDriver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         auto joints = adapter_->ik(wp);
+        if (joints && joints->size() != system_.state_dim) {
+            response.valid = false;
+            response.description = "Adapter ik returned " + std::to_string(joints->size()) +
+                                   " joints, expected " + std::to_string(system_.state_dim);
+            op->reply(response.to_value());
+            return;
+        }
         if (!joints) {
             response.valid = false;
             auto wp_string = vector_to_string(wp);
@@ -389,36 +398,10 @@ void MpleDriver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op
             status_pv_.post(status_value_);
 
             try {
-
-                // Build the time parametrized trajectory with TOPP-RA
-                Trajectory traj = build_trajectory(
-                    req.waypoints, req.speed, req.acceleration);
-
-                if (execution_state_.load() == ExecutionState::StopRequested) {
-                    throw std::runtime_error("Execution stopped");
-                }
-
-                // Command the move
-                if (!adapter_->move(traj)) {
-                    throw std::runtime_error("Error in adapter::move");
-                }
-
-                // Stop may have been requested while adapter::move was running.
-                if (execution_state_.load() == ExecutionState::StopRequested) {
-                    adapter_->stop();
-                }
-
-                // Wait for the move to complete
-                auto start = std::chrono::steady_clock::now();
-                while (execution_state_.load() == ExecutionState::Running && adapter_->moving()) {
-                    auto now = std::chrono::steady_clock::now();
-                    auto elap_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
-                    if (elap_ms.count() >= req.timeout * 1000.0) {
-                        std::cerr << "Execution timed out (" << req.timeout << " sec)\n";
-                        adapter_->stop();
-                        break;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                if (adapter_->supports_trajectory()) {
+                    execute_trajectory(req);
+                } else {
+                    execute_steps(req);
                 }
             } catch (const std::exception& e) {
                 std::cerr << "Execution failed: " << e.what() << "\n";
@@ -443,6 +426,120 @@ void MpleDriver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op
     response.error_code = 0;
     response.description = "Execution started";
     op->reply(response.to_value());
+}
+
+void MpleDriver::execute_trajectory(const ExecuteRequest& req) {
+    // Build the time parametrized trajectory with TOPP-RA
+    Trajectory traj = build_trajectory(req.waypoints, req.speed, req.acceleration);
+
+    if (execution_state_.load() == ExecutionState::StopRequested) {
+        throw std::runtime_error("Execution stopped");
+    }
+
+    // Command the move
+    if (!adapter_->move(traj)) {
+        throw std::runtime_error("Error in adapter::move");
+    }
+
+    // Stop may have been requested while adapter::move was running.
+    if (execution_state_.load() == ExecutionState::StopRequested) {
+        adapter_->stop();
+    }
+
+    // Wait for the move to complete
+    auto start = std::chrono::steady_clock::now();
+    while (execution_state_.load() == ExecutionState::Running && adapter_->moving()) {
+        auto now = std::chrono::steady_clock::now();
+        auto elap_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start);
+        if (elap_ms.count() >= req.timeout * 1000.0) {
+            std::cerr << "Execution timed out (" << req.timeout << " sec)\n";
+            adapter_->stop();
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+void MpleDriver::execute_steps(const ExecuteRequest& req) {
+    constexpr auto START_TIMEOUT = std::chrono::milliseconds(500);
+    constexpr double TARGET_TOLERANCE = 1e-3;
+
+    // One synchronized point-to-point move per segment
+    Trajectory steps = build_step_trajectory(req.waypoints, req.speed, req.acceleration);
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto deadline = start + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                      std::chrono::duration<double>(req.timeout));
+
+    auto at_target = [this](const std::vector<double>& target) {
+        auto state = adapter_->get_state();
+        if (state.size() != target.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < state.size(); ++i) {
+            if (std::abs(state[i] - target[i]) > TARGET_TOLERANCE) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    for (size_t k = 0; k < steps.size(); ++k) {
+        if (execution_state_.load() != ExecutionState::Running) {
+            throw std::runtime_error("Execution stopped");
+        }
+
+        if (steps[k].time == 0.0) {
+            status_value_["iter"] = k + 1;
+            status_pv_.post(status_value_);
+            continue;
+        }
+
+        if (!adapter_->move_step(steps[k])) {
+            throw std::runtime_error("Error in adapter::move_step");
+        }
+
+        // Wait for motion to start. A short move may finish before moving() is observed true.
+        const auto step_start = std::chrono::steady_clock::now();
+        bool started = false;
+        while (execution_state_.load() == ExecutionState::Running) {
+            if (adapter_->moving()) {
+                started = true;
+                break;
+            }
+            if (std::chrono::steady_clock::now() - step_start >= START_TIMEOUT) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+
+        if (execution_state_.load() == ExecutionState::StopRequested) {
+            adapter_->stop();
+            throw std::runtime_error("Execution stopped");
+        }
+
+        if (!started && !at_target(steps[k].position)) {
+            adapter_->stop();
+            throw std::runtime_error("Motion did not start for step " + std::to_string(k + 1));
+        }
+
+        // Wait for the step to complete
+        while (execution_state_.load() == ExecutionState::Running && adapter_->moving()) {
+            if (std::chrono::steady_clock::now() >= deadline) {
+                adapter_->stop();
+                throw std::runtime_error("Execution timed out (" + std::to_string(req.timeout) + " sec)");
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+
+        if (execution_state_.load() == ExecutionState::StopRequested) {
+            adapter_->stop();
+            throw std::runtime_error("Execution stopped");
+        }
+
+        status_value_["iter"] = k + 1;
+        status_pv_.post(status_value_);
+    }
 }
 
 void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
@@ -479,6 +576,10 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
                 std::cerr << "Adapter does not provide IK (or it failed?). mple must do it.\n";
                 // TODO: Compute IK here
                 // Probably need URDF or DH params
+                break;
+            } else if (joints->size() != system_.state_dim) {
+                hit = "adapter ik returned " + std::to_string(joints->size()) + " joints, expected " +
+                      std::to_string(system_.state_dim);
                 break;
             } else {
                 // TODO: check joint and workspace limits
