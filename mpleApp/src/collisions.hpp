@@ -17,8 +17,9 @@ class CollisionChecker {
     };
     Workspace make_workspace() const;
 
-    // Checks the robot at joint state q against the scene objects. Returns
-    // "<robot geometry> collides with <scene object>" on the first collision found.
+    // Checks the robot at joint state q against the scene objects and against itself for the
+    // self-collision pairs in sys.geom_model. Returns "<robot geometry> collides with <scene object>"
+    // or "<robot geometry> collides with <robot geometry> (self)" on the first collision found.
     std::optional<std::string> check(const std::vector<double>& q, Workspace& ws) const;
 
     const pinocchio::GeometryModel& geometry_model() const { return geom_model_; }

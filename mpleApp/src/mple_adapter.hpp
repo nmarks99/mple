@@ -10,6 +10,7 @@
 struct MpleModelConfig {
     std::string description_dir;
     std::string urdf_path;
+    std::string srdf_path; // optional, empty disables self-collision checking
     std::string base_frame;
     std::string ee_frame;
 };

@@ -84,6 +84,16 @@ class LuaMpleAdapter : public MpleAdapter {
         config.urdf_path = config.description_dir + "/" + lua_tostring(L, -1);
         lua_pop(L, 1);
 
+        lua_getfield(L, -1, "srdf");
+        if (!lua_isnil(L, -1)) {
+            if (lua_type(L, -1) != LUA_TSTRING) {
+                lua_pop(L, 1);
+                throw std::runtime_error("Model configuration field 'srdf' must be a string");
+            }
+            config.srdf_path = config.description_dir + "/" + lua_tostring(L, -1);
+        }
+        lua_pop(L, 1);
+
         lua_getfield(L, -1, "base_frame");
         if (lua_type(L, -1) != LUA_TSTRING) {
             lua_pop(L, 1);

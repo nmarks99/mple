@@ -8,6 +8,8 @@
 #include "trajectory.hpp"
 #include "kinematics.hpp"
 
+#include <pinocchio/parsers/srdf.hpp>
+
 #include "iocsh.h"
 #include "epicsExport.h"
 
@@ -67,6 +69,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         pinocchio::urdf::buildGeom(
             system_.model, model_config.urdf_path,
             pinocchio::COLLISION, system_.geom_model, model_config.description_dir);
+        if (!model_config.srdf_path.empty()) {
+            system_.geom_model.addAllCollisionPairs();
+            pinocchio::srdf::removeCollisionPairs(system_.model, system_.geom_model, model_config.srdf_path);
+            printf("Self-collision checking enabled with %zu pairs from %s\n",
+                   system_.geom_model.collisionPairs.size(), model_config.srdf_path.c_str());
+        } else {
+            printf("No SRDF given, self-collision checking disabled\n");
+        }
         if (!system_.model.existFrame(model_config.base_frame, pinocchio::BODY)) {
             throw std::runtime_error("Base frame not found: " + model_config.base_frame);
         }

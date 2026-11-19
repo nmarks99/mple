@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "pinocchio/parsers/srdf.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 
 #include <epicsUnitTest.h>
@@ -24,10 +25,61 @@ bool ends_with(const std::string& s, const std::string& suffix) {
     return s.size() >= suffix.size() && s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+// Elbow folded so the forearm hits the shoulder
+const std::vector<double> q_folded{0.0, -M_PI / 2.0, 3.0, 0.0, 0.0, 0.0};
+
+void test_ur_self_collision(const std::string& robot) {
+    const std::string urdf_path = MPLE_TEST_DESCRIPTION_DIR "/" + robot + ".urdf";
+    const std::string srdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur.srdf";
+    MpleSystemModel sys;
+    try {
+        pinocchio::urdf::buildModel(urdf_path, sys.model);
+        pinocchio::urdf::buildGeom(sys.model, urdf_path, pinocchio::COLLISION, sys.geom_model,
+                                   MPLE_TEST_DESCRIPTION_DIR);
+        sys.geom_model.addAllCollisionPairs();
+        pinocchio::srdf::removeCollisionPairs(sys.model, sys.geom_model, srdf_path);
+        pinocchio::srdf::loadReferenceConfigurations(sys.model, srdf_path);
+    } catch (const std::exception& e) {
+        testAbort("Failed to load %s: %s", robot.c_str(), e.what());
+    }
+    sys.state_dim = static_cast<std::size_t>(sys.model.nv);
+
+    if (!testOk(sys.model.nq == sys.model.nv, "%s has nq == nv", robot.c_str())) {
+        testSkip(7, "MPLE requires nq == nv");
+        return;
+    }
+    testOk(sys.geom_model.collisionPairs.size() == 14, "%s: SRDF leaves 14 of 21 self-collision pairs",
+           robot.c_str());
+
+    const CollisionChecker c(sys, SceneDescription{});
+    auto ws = c.make_workspace();
+    for (const char* name : {"home", "up", "test_configuration"}) {
+        const auto it = sys.model.referenceConfigurations.find(name);
+        if (it == sys.model.referenceConfigurations.end()) {
+            testFail("%s: group state '%s' missing from SRDF", robot.c_str(), name);
+            continue;
+        }
+        const std::vector<double> qv(it->second.data(), it->second.data() + it->second.size());
+        const auto hit = c.check(qv, ws);
+        if (hit) {
+            testDiag("%s", hit->c_str());
+        }
+        testOk(!hit, "%s: group state '%s' has no self-collision", robot.c_str(), name);
+    }
+    testOk(sys.model.referenceConfigurations.size() == 3, "%s: SRDF has 3 group states", robot.c_str());
+
+    const auto hit = c.check(q_folded, ws);
+    testOk(hit.has_value(), "%s: folded elbow self-collides", robot.c_str());
+    if (hit) {
+        testDiag("%s", hit->c_str());
+    }
+    testOk(hit && ends_with(*hit, " (self)"), "%s: result marks self-collision", robot.c_str());
+}
+
 } // namespace
 
 MAIN(testCollisionChecker) {
-    testPlan(11);
+    testPlan(29);
 
     const std::string urdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur5e.urdf";
     MpleSystemModel sys;
@@ -110,6 +162,30 @@ MAIN(testCollisionChecker) {
         const CollisionChecker c(sys_root, single_object("front", {-0.6, 0.0, 0.16}, Sphere{0.1}));
         auto ws = c.make_workspace();
         testOk(!c.check(q_zero, ws), "without g_rb the front sphere misses");
+    }
+
+    test_ur_self_collision("ur5e");
+    test_ur_self_collision("ur3e");
+
+    MpleSystemModel sys_self = sys;
+    try {
+        sys_self.geom_model.addAllCollisionPairs();
+        pinocchio::srdf::removeCollisionPairs(sys_self.model, sys_self.geom_model,
+                                              MPLE_TEST_DESCRIPTION_DIR "/ur.srdf");
+    } catch (const std::exception& e) {
+        testAbort("Failed to load SRDF: %s", e.what());
+    }
+
+    {
+        const CollisionChecker c(sys_self, single_object("front", {-0.6, 0.0, 0.16}, Sphere{0.1}));
+        testOk(c.geometry_model().collisionPairs.size() == 14 + n_robot,
+               "checker keeps self pairs and adds scene pairs");
+    }
+
+    {
+        const CollisionChecker c(sys, SceneDescription{});
+        auto ws = c.make_workspace();
+        testOk(!c.check(q_folded, ws), "without SRDF self-collision is not checked");
     }
 
     return testDone();

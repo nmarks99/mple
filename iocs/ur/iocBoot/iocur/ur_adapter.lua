@@ -5,6 +5,7 @@ function config()
     return {
         description_dir = MPLE .. "/description",
         urdf = "ur5e.urdf",
+        srdf = "ur.srdf",
         base_frame = "base",
         ee_frame = "tool0"
     }

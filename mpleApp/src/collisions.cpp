@@ -69,6 +69,9 @@ std::optional<std::string> CollisionChecker::check(const std::vector<double>& q,
         return std::nullopt;
     }
     const auto& cp = geom_model_.collisionPairs[ws.geom_data.collisionPairIndex];
-    return geom_model_.geometryObjects[cp.first].name + " collides with " +
-           geom_owner_[cp.second - n_robot_geoms_];
+    const auto& first = geom_model_.geometryObjects[cp.first].name;
+    if (cp.second < n_robot_geoms_) {
+        return first + " collides with " + geom_model_.geometryObjects[cp.second].name + " (self)";
+    }
+    return first + " collides with " + geom_owner_[cp.second - n_robot_geoms_];
 }
