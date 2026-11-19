@@ -25,6 +25,16 @@ bool ends_with(const std::string& s, const std::string& suffix) {
     return s.size() >= suffix.size() && s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+std::vector<double> configuration_to_state(const pinocchio::Model& model, const Eigen::VectorXd& q) {
+    std::vector<double> state(model.nv);
+    for (pinocchio::JointIndex i = 1; i < model.joints.size(); ++i) {
+        const auto& joint = model.joints[i];
+        state[joint.idx_v()] = joint.nq() == 2 ? std::atan2(q[joint.idx_q() + 1], q[joint.idx_q()])
+                                               : q[joint.idx_q()];
+    }
+    return state;
+}
+
 // Elbow folded so the forearm hits the shoulder
 const std::vector<double> q_folded{0.0, -M_PI / 2.0, 3.0, 0.0, 0.0, 0.0};
 
@@ -42,12 +52,12 @@ void test_ur_self_collision(const std::string& robot) {
     } catch (const std::exception& e) {
         testAbort("Failed to load %s: %s", robot.c_str(), e.what());
     }
-    sys.state_dim = static_cast<std::size_t>(sys.model.nv);
-
-    if (!testOk(sys.model.nq == sys.model.nv, "%s has nq == nv", robot.c_str())) {
-        testSkip(7, "MPLE requires nq == nv");
-        return;
+    try {
+        init_joint_limits(sys);
+    } catch (const std::exception& e) {
+        testAbort("%s: %s", robot.c_str(), e.what());
     }
+    testOk(sys.state_dim == 6, "%s has 6 state values (nq %d)", robot.c_str(), sys.model.nq);
     testOk(sys.geom_model.collisionPairs.size() == 14, "%s: SRDF leaves 14 of 21 self-collision pairs",
            robot.c_str());
 
@@ -59,8 +69,7 @@ void test_ur_self_collision(const std::string& robot) {
             testFail("%s: group state '%s' missing from SRDF", robot.c_str(), name);
             continue;
         }
-        const std::vector<double> qv(it->second.data(), it->second.data() + it->second.size());
-        const auto hit = c.check(qv, ws);
+        const auto hit = c.check(configuration_to_state(sys.model, it->second), ws);
         if (hit) {
             testDiag("%s", hit->c_str());
         }

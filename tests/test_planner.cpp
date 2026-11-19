@@ -2,11 +2,12 @@
 #include <testMain.h>
 
 #include <cmath>
+#include <limits>
 
 #include <planner.hpp>
 
 MAIN(testPlanner) {
-    testPlan(19);
+    testPlan(24);
 
     const std::vector<double> lower = {-3.0, -1.0};
     const std::vector<double> upper = {3.0, 1.0};
@@ -72,6 +73,37 @@ MAIN(testPlanner) {
         auto params = make_params({0.0, 0.0}, {0.5, 0.0}, always_valid);
         params.planning_time = t;
         testOk(!plan(params).valid, "planning_time %g rejected", t);
+    }
+
+    // Unbounded joint 0, starting several turns out (multi-turn reading)
+    {
+        auto p = make_params({15.0, 0.0}, {-1.0, 0.0}, always_valid);
+        p.lower_limits = {-INFINITY, -1.0};
+        p.upper_limits = {INFINITY, 1.0};
+        const PlanResult r = plan(p);
+        const auto& t = r.trajectory_flat;
+        testOk(r.valid, "unbounded joint plans from a multi-turn start");
+        testOk(t.size() >= 4 && t.front() == 15.0 && t[t.size() - 2] == -1.0,
+               "unbounded joint path keeps the exact start and goal angles");
+        bool in_range = true;
+        for (size_t i = 0; i < t.size(); i += 2) {
+            in_range = in_range && t[i] >= -1.0 - 2.0 * M_PI && t[i] <= 15.0 + 2.0 * M_PI;
+        }
+        testOk(in_range, "unbounded joint stays within one turn of start and goal");
+    }
+
+    {
+        auto p = make_params({15.0, 0.0}, {-1.0, 0.0}, always_valid);
+        p.lower_limits = {-INFINITY, -1.0};
+        testOk(!plan(p).valid, "half-unbounded limits are rejected");
+    }
+
+    {
+        auto p = make_params({0.0, 0.0}, {0.0, 0.0}, always_valid);
+        p.lower_limits = {-INFINITY, -1.0};
+        p.upper_limits = {INFINITY, 1.0};
+        p.start[0] = std::numeric_limits<double>::quiet_NaN();
+        testOk(!plan(p).valid, "NaN start is rejected");
     }
 
     return testDone();

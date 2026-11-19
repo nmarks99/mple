@@ -1,4 +1,3 @@
-#include <cassert>
 #include <memory>
 #include <type_traits>
 #include <variant>
@@ -63,8 +62,7 @@ CollisionChecker::Workspace CollisionChecker::make_workspace() const {
 }
 
 std::optional<std::string> CollisionChecker::check(const std::vector<double>& q, Workspace& ws) const {
-    assert(q.size() == static_cast<std::size_t>(sys_.model.nq));
-    const Eigen::Map<const Eigen::VectorXd> q_vec(q.data(), q.size());
+    const Eigen::VectorXd q_vec = state_to_configuration(sys_.model, q);
     if (!pinocchio::computeCollisions(sys_.model, ws.data, geom_model_, ws.geom_data, q_vec, true)) {
         return std::nullopt;
     }

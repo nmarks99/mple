@@ -83,10 +83,7 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
         if (!system_.model.existFrame(model_config.ee_frame, pinocchio::BODY)) {
             throw std::runtime_error("End-effector frame not found: " + model_config.ee_frame);
         }
-        if (system_.model.nq != system_.model.nv) {
-            throw std::runtime_error("MPLE requires Pinocchio models with nq == nv");
-        }
-        system_.state_dim = static_cast<size_t>(system_.model.nv);
+        init_joint_limits(system_);
         system_.base_frame_id = system_.model.getFrameId(model_config.base_frame, pinocchio::BODY);
         system_.ee_frame_id = system_.model.getFrameId(model_config.ee_frame, pinocchio::BODY);
 
@@ -284,10 +281,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                 params.start = adapter_->get_state();
             }
             params.goal.assign(req.goal.begin(), req.goal.end());
-            const auto& lower = system_.model.lowerPositionLimit;
-            const auto& upper = system_.model.upperPositionLimit;
-            params.lower_limits.assign(lower.data(), lower.data() + lower.size());
-            params.upper_limits.assign(upper.data(), upper.data() + upper.size());
+            params.lower_limits = system_.lower_limits;
+            params.upper_limits = system_.upper_limits;
             params.planning_time = req.planning_time;
             params.algo = req.algo;
             params.is_state_valid = [this, &scene_now, &ws](const std::vector<double>& state) {
@@ -333,10 +328,10 @@ void MpleDriver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     for (auto& wp : request->joints) {
         auto pose = adapter_->fk(wp);
         if (!pose) {
-            if (wp.size() != static_cast<size_t>(system_.model.nq)) {
+            if (wp.size() != system_.state_dim) {
                 response.valid = false;
-                response.description = "MPLE FK requires " + std::to_string(system_.model.nq)
-                    + " configuration values, but received " + std::to_string(wp.size());
+                response.description = "MPLE FK requires " + std::to_string(system_.state_dim)
+                    + " joint values, but received " + std::to_string(wp.size());
                 op->reply(response.to_value());
                 return;
             }

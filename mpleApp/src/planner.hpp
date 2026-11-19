@@ -23,6 +23,7 @@ using StateValidityChecker = std::function<bool(const std::vector<double>&)>;
 struct PlanParams {
     std::vector<double> start;
     std::vector<double> goal;
+    // -inf/+inf marks an unbounded (continuous) joint
     std::vector<double> lower_limits;
     std::vector<double> upper_limits;
     StateValidityChecker is_state_valid;

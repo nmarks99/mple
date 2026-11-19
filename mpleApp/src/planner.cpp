@@ -54,6 +54,16 @@ PlanResult plan(const PlanParams& params) {
     // Set bounds from the given limits
     ompl::base::RealVectorBounds bounds(state_dimension);
     for (size_t i = 0; i < state_dimension; ++i) {
+        if (!std::isfinite(params.start[i]) || !std::isfinite(params.goal[i])) {
+            result.description = "Start and goal values for joint " + std::to_string(i) + " must be finite";
+            return result;
+        }
+        // An unbounded (continuous) joint may move one turn beyond its start and goal, not more
+        if (params.lower_limits[i] == -INFINITY && params.upper_limits[i] == INFINITY) {
+            bounds.setLow(i, std::min(params.start[i], params.goal[i]) - 2.0 * M_PI);
+            bounds.setHigh(i, std::max(params.start[i], params.goal[i]) + 2.0 * M_PI);
+            continue;
+        }
         if (!std::isfinite(params.lower_limits[i]) || !std::isfinite(params.upper_limits[i]) ||
             params.lower_limits[i] >= params.upper_limits[i]) {
             result.description = "Invalid joint limits for joint " + std::to_string(i);
