@@ -8,14 +8,14 @@ PREFIX = "rr:"
 
 # Arm pointing to the upper left. The direct path in either direction
 # sweeps through Box1 or Box2, so the planner must fold the elbow.
-GOAL_DEG = [-340.0, 90.0]
+GOAL_DEG = [-90, 30]
 
 
 def main():
     mple = MpleClient(f"{PREFIX}mple:")
 
     goal = np.radians(GOAL_DEG)
-    plan = mple.plan(goal)
+    plan = mple.plan(goal, planner="RRTstar")
     print(f"Plan: valid={plan['valid']}, {plan['description']}")
     if not plan["valid"]:
         return

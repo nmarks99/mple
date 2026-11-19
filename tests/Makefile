@@ -18,6 +18,7 @@ TESTS += testTrajectory
 
 TESTPROD_HOST += testPlanner
 testPlanner_SRCS += test_planner.cpp
+testPlanner_SRCS += planner.cpp
 testPlanner_LIBS += ompl
 testPlanner_LIBS += Com
 testPlanner_SYS_LIBS += boost_serialization

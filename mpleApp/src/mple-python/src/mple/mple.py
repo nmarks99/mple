@@ -103,18 +103,21 @@ class MpleClient:
         else:
             print("Validation failed. Aborting.")
 
-    def plan(self, goal, start=[]):
-        PlanMsg = Value(Type([
-            ('start', 'ad'),
-            ('goal', 'ad'),
-        ]), {
-            'start': start,
-            'goal': goal,
-        })
+    def plan(self, goal, start=[], planner=None, planning_time=None):
+        fields = [('start', 'ad'), ('goal', 'ad')]
+        values = {'start': start, 'goal': goal}
+        if planner is not None:
+            fields.append(('planner', 's'))
+            values['planner'] = planner
+        if planning_time is not None:
+            fields.append(('planning_time', 'd'))
+            values['planning_time'] = planning_time
+            rpc_timeout = planning_time + 1.0
+        else:
+            rpc_timeout = 5.0
+        PlanMsg = Value(Type(fields), values)
 
-        result = self.ctxt.rpc(f"{self.prefix}Plan", PlanMsg)
-        #  print(f"Valid: {result['valid']}")
-        #  print(f"Description: {result['description']}")
+        result = self.ctxt.rpc(f"{self.prefix}Plan", PlanMsg, timeout=rpc_timeout)
         return result
 
     def compute_fk(self, joints):

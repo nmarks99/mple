@@ -8,6 +8,8 @@ Motion Planning Library for EPICS
 ## Building
 
 `mple` depends on [mple-support](https://github.com/nmarks99/mple-support) which must be built first.
+The master branch of `mple` can always be expected to build successfully with the master branch of `mple-support`.
+
 Once you have successfully built `mple-support` on your system, clone and build `mple`:
 
 ``` bash

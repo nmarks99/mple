@@ -260,29 +260,49 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         return;
     }
 
-    auto scene_now = scene_snapshot();
-    auto ws = scene_now.checker->make_workspace();
+    std::shared_ptr<pvxs::server::ExecOp> shared_op(std::move(op));
+    auto plan_task = [this, op = shared_op, req = std::move(request.value())]() {
+        PlanResponse response;
+        try {
+            auto scene_now = scene_snapshot();
+            auto ws = scene_now.checker->make_workspace();
 
-    std::vector<double> start(request->start.begin(), request->start.end());
-    if (start.empty()) {
-        std::cout << "No starting state provided, using current state as start\n";
-        start = adapter_->get_state();
+            PlanParams params;
+            params.start.assign(req.start.begin(), req.start.end());
+            if (params.start.empty()) {
+                std::cout << "No starting state provided, using current state as start\n";
+                params.start = adapter_->get_state();
+            }
+            params.goal.assign(req.goal.begin(), req.goal.end());
+            const auto& lower = system_.model.lowerPositionLimit;
+            const auto& upper = system_.model.upperPositionLimit;
+            params.lower_limits.assign(lower.data(), lower.data() + lower.size());
+            params.upper_limits.assign(upper.data(), upper.data() + upper.size());
+            params.planning_time = req.planning_time;
+            params.algo = req.algo;
+            params.is_state_valid = [this, &scene_now, &ws](const std::vector<double>& state) {
+                return !check_state_collision(scene_now, ws, state);
+            };
+
+            PlanResult result = plan(params);
+            response.valid = result.valid;
+            response.description = std::move(result.description);
+            response.trajectory_flat =
+                pvxs::shared_array<double>(result.trajectory_flat.begin(), result.trajectory_flat.end());
+        } catch (const std::exception& e) {
+            response.valid = false;
+            response.description = std::string("Planning failed: ") + e.what();
+        }
+        op->reply(response.to_value());
+    };
+
+    try {
+        std::thread(std::move(plan_task)).detach();
+    } catch (const std::exception& e) {
+        response.valid = false;
+        response.description = std::string("Failed to start planning thread: ") + e.what();
+        shared_op->reply(response.to_value());
     }
-    const std::vector<double> goal(request->goal.begin(), request->goal.end());
-    const auto& lower = system_.model.lowerPositionLimit;
-    const auto& upper = system_.model.upperPositionLimit;
-    PlanResult result = plan(
-        start, goal, std::vector<double>(lower.data(), lower.data() + lower.size()),
-        std::vector<double>(upper.data(), upper.data() + upper.size()),
-        [this, &scene_now, &ws](const std::vector<double>& state) {
-            return !check_state_collision(scene_now, ws, state);
-        });
-
-    response.valid = result.valid;
-    response.description = std::move(result.description);
-    response.trajectory_flat = pvxs::shared_array<double>(
-        result.trajectory_flat.begin(), result.trajectory_flat.end());
-    op->reply(response.to_value());
 }
 
 void MpleDriver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,

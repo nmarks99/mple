@@ -18,6 +18,7 @@
 #include "mple_adapter_registry.hpp"
 #include "mple_system_model.hpp"
 #include "collisions.hpp"
+#include "planner.hpp"
 #include "scene.hpp"
 
 class MpleDriver {
@@ -229,10 +230,27 @@ class MpleDriver {
                 request_valid_ = false;
                 return;
             }
+            if (auto field = value["planner"]; field.valid()) {
+                const auto name = field.as<std::string>();
+                if (!name.empty()) {
+                    auto parsed = planner_from_string(name);
+                    if (!parsed) {
+                        printf("Unknown planner: %s\n", name.c_str());
+                        request_valid_ = false;
+                        return;
+                    }
+                    algo = *parsed;
+                }
+            }
+            if (auto field = value["planning_time"]; field.valid()) {
+                planning_time = field.as<double>();
+            }
         }
 
         pvxs::shared_array<const double> start = {};
         pvxs::shared_array<const double> goal = {};
+        PlannerAlgorithm algo = PlannerAlgorithm::RRTConnect;
+        double planning_time = 1.0;
 
         static std::optional<PlanRequest> build(pvxs::Value& value, size_t state_dims) {
             try {

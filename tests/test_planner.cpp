@@ -6,7 +6,7 @@
 #include <planner.hpp>
 
 MAIN(testPlanner) {
-    testPlan(0);
+    testPlan(19);
 
     const std::vector<double> lower = {-3.0, -1.0};
     const std::vector<double> upper = {3.0, 1.0};
@@ -22,8 +22,18 @@ MAIN(testPlanner) {
         return true;
     };
 
+    auto make_params = [&](std::vector<double> start, std::vector<double> goal, StateValidityChecker checker) {
+        PlanParams p;
+        p.start = std::move(start);
+        p.goal = std::move(goal);
+        p.lower_limits = lower;
+        p.upper_limits = upper;
+        p.is_state_valid = std::move(checker);
+        return p;
+    };
+
     // The shortest angular route from 2.8 to -2.8 crosses +-pi, outside the limits
-    PlanResult long_way = plan({2.8, 0.0}, {-2.8, 0.0}, lower, upper, always_valid);
+    PlanResult long_way = plan(make_params({2.8, 0.0}, {-2.8, 0.0}, always_valid));
     testOk1(long_way.valid);
     testOk1(in_limits(long_way));
     testOk1(long_way.trajectory_flat.size() >= 4);
@@ -32,14 +42,37 @@ MAIN(testPlanner) {
 
     // Obstacle band forces a detour in joint 1, which must stay within [-1, 1]
     auto band = [](const std::vector<double>& q) { return !(std::abs(q[0]) < 0.2 && q[1] > -0.8); };
-    PlanResult detour = plan({-1.0, 0.0}, {1.0, 0.0}, lower, upper, band);
+    PlanResult detour = plan(make_params({-1.0, 0.0}, {1.0, 0.0}, band));
     testOk1(detour.valid);
     testOk1(in_limits(detour));
 
-    testOk1(!plan({3.5, 0.0}, {0.0, 0.0}, lower, upper, always_valid).valid);
-    testOk1(!plan({0.0, 0.0}, {0.0, 1.5}, lower, upper, always_valid).valid);
-    testOk1(!plan({0.0, 0.0}, {0.0, 0.0}, {-1.0}, {1.0}, always_valid).valid);
-    testOk1(!plan({0.0, 0.0}, {0.0, 0.0}, {-INFINITY, -1.0}, upper, always_valid).valid);
+    for (const char* name : {"RRTstar", "BITstar", "ABITstar"}) {
+        auto params = make_params({-1.0, 0.0}, {1.0, 0.0}, band);
+        params.algo = *planner_from_string(name);
+        params.planning_time = 0.2;
+        PlanResult r = plan(params);
+        testOk(r.valid && in_limits(r), "%s finds a detour", name);
+    }
+    testOk1(!planner_from_string("Bogus"));
+
+    testOk1(!plan(make_params({3.5, 0.0}, {0.0, 0.0}, always_valid)).valid);
+    testOk1(!plan(make_params({0.0, 0.0}, {0.0, 1.5}, always_valid)).valid);
+    testOk1(!plan(make_params({0.0, 0.0}, {0.0, 0.0}, nullptr)).valid);
+
+    auto bad_dims = make_params({0.0, 0.0}, {0.0, 0.0}, always_valid);
+    bad_dims.lower_limits = {-1.0};
+    bad_dims.upper_limits = {1.0};
+    testOk1(!plan(bad_dims).valid);
+
+    auto bad_limits = make_params({0.0, 0.0}, {0.0, 0.0}, always_valid);
+    bad_limits.lower_limits = {-INFINITY, -1.0};
+    testOk1(!plan(bad_limits).valid);
+
+    for (double t : {0.0, -1.0, std::numeric_limits<double>::quiet_NaN()}) {
+        auto params = make_params({0.0, 0.0}, {0.5, 0.0}, always_valid);
+        params.planning_time = t;
+        testOk(!plan(params).valid, "planning_time %g rejected", t);
+    }
 
     return testDone();
 }
