@@ -8,7 +8,7 @@
 
 #include <ompl/base/ScopedState.h>
 #include <ompl/base/StateSpace.h>
-#include <ompl/base/spaces/SO2StateSpace.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 
@@ -22,6 +22,8 @@ using StateValidityChecker = std::function<bool(const std::vector<double>&)>;
 
 inline PlanResult plan(const std::vector<double>& start_values,
                        const std::vector<double>& goal_values,
+                       const std::vector<double>& lower_limits,
+                       const std::vector<double>& upper_limits,
                        const StateValidityChecker& is_state_valid) {
     PlanResult result;
 
@@ -30,24 +32,40 @@ inline PlanResult plan(const std::vector<double>& start_values,
         return result;
     }
 
-    auto space = std::make_shared<ompl::base::CompoundStateSpace>();
-    for (size_t i = 0; i < start_values.size(); ++i) {
-        space->addSubspace(std::make_shared<ompl::base::SO2StateSpace>(), 1.0);
+    const size_t state_dimension = start_values.size();
+    if (lower_limits.size() != state_dimension || upper_limits.size() != state_dimension) {
+        result.description = "Joint limit dimensions must match the state dimension";
+        return result;
     }
+
+    ompl::base::RealVectorBounds bounds(state_dimension);
+    for (size_t i = 0; i < state_dimension; ++i) {
+        if (!std::isfinite(lower_limits[i]) || !std::isfinite(upper_limits[i]) ||
+            lower_limits[i] >= upper_limits[i]) {
+            result.description = "Invalid joint limits for joint " + std::to_string(i);
+            return result;
+        }
+        if (start_values[i] < lower_limits[i] || start_values[i] > upper_limits[i]) {
+            result.description = "Start value for joint " + std::to_string(i) + " is outside joint limits";
+            return result;
+        }
+        if (goal_values[i] < lower_limits[i] || goal_values[i] > upper_limits[i]) {
+            result.description = "Goal value for joint " + std::to_string(i) + " is outside joint limits";
+            return result;
+        }
+        bounds.setLow(i, lower_limits[i]);
+        bounds.setHigh(i, upper_limits[i]);
+    }
+
+    auto space = std::make_shared<ompl::base::RealVectorStateSpace>(state_dimension);
+    space->setBounds(bounds);
 
     ompl::geometric::SimpleSetup setup(space);
 
-    const size_t state_dimension = start_values.size();
     setup.setStateValidityChecker(
         [&is_state_valid, state_dimension](const ompl::base::State* state) {
-            const auto* compound =
-                state->as<ompl::base::CompoundStateSpace::StateType>();
-            std::vector<double> values(state_dimension);
-            for (size_t i = 0; i < state_dimension; ++i) {
-                values[i] =
-                    compound->as<ompl::base::SO2StateSpace::StateType>(i)->value;
-            }
-            return is_state_valid(values);
+            const auto* values = state->as<ompl::base::RealVectorStateSpace::StateType>()->values;
+            return is_state_valid(std::vector<double>(values, values + state_dimension));
         });
     setup.getSpaceInformation()->setStateValidityCheckingResolution(0.01);
 
@@ -56,14 +74,10 @@ inline PlanResult plan(const std::vector<double>& start_values,
 
     ompl::base::ScopedState<> start(space);
     ompl::base::ScopedState<> goal(space);
-    auto* start_state = start->as<ompl::base::CompoundStateSpace::StateType>();
-    auto* goal_state = goal->as<ompl::base::CompoundStateSpace::StateType>();
-    for (size_t i = 0; i < start_values.size(); ++i) {
-        start_state->as<ompl::base::SO2StateSpace::StateType>(i)->value = start_values[i];
-        goal_state->as<ompl::base::SO2StateSpace::StateType>(i)->value = goal_values[i];
+    for (size_t i = 0; i < state_dimension; ++i) {
+        start[i] = start_values[i];
+        goal[i] = goal_values[i];
     }
-    space->enforceBounds(start.get());
-    space->enforceBounds(goal.get());
     setup.setStartAndGoalStates(start, goal, 1e-9);
 
     const ompl::base::PlannerStatus status = setup.solve(1.0);
@@ -80,20 +94,12 @@ inline PlanResult plan(const std::vector<double>& start_values,
     }
 
     path.interpolate();
-    result.trajectory_flat.resize(path.getStateCount() * start_values.size());
-
-    constexpr double two_pi = 6.28318530717958647692;
-    std::vector<double> previous = start_values;
+    result.trajectory_flat.resize(path.getStateCount() * state_dimension);
     for (size_t point_index = 0; point_index < path.getStateCount(); ++point_index) {
-        const auto* state =
-            path.getState(point_index)->as<ompl::base::CompoundStateSpace::StateType>();
-        for (size_t state_index = 0; state_index < start_values.size(); ++state_index) {
-            const double wrapped =
-                state->as<ompl::base::SO2StateSpace::StateType>(state_index)->value;
-            const double unwrapped =
-                previous[state_index] + std::remainder(wrapped - previous[state_index], two_pi);
-            result.trajectory_flat[point_index * start_values.size() + state_index] = unwrapped;
-            previous[state_index] = unwrapped;
+        const auto* values =
+            path.getState(point_index)->as<ompl::base::RealVectorStateSpace::StateType>()->values;
+        for (size_t state_index = 0; state_index < state_dimension; ++state_index) {
+            result.trajectory_flat[point_index * state_dimension + state_index] = values[state_index];
         }
     }
 

@@ -269,8 +269,11 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         start = adapter_->get_state();
     }
     const std::vector<double> goal(request->goal.begin(), request->goal.end());
+    const auto& lower = system_.model.lowerPositionLimit;
+    const auto& upper = system_.model.upperPositionLimit;
     PlanResult result = plan(
-        start, goal,
+        start, goal, std::vector<double>(lower.data(), lower.data() + lower.size()),
+        std::vector<double>(upper.data(), upper.data() + upper.size()),
         [this, &scene_now, &ws](const std::vector<double>& state) {
             return !check_state_collision(scene_now, ws, state);
         });

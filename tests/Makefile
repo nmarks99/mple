@@ -16,6 +16,14 @@ testTrajectory_LIBS += Com
 testTrajectory_LIBS += toppra
 TESTS += testTrajectory
 
+TESTPROD_HOST += testPlanner
+testPlanner_SRCS += test_planner.cpp
+testPlanner_LIBS += ompl
+testPlanner_LIBS += Com
+testPlanner_SYS_LIBS += boost_serialization
+testPlanner_SYS_LIBS += boost_filesystem
+TESTS += testPlanner
+
 TESTPROD_HOST += testCollisions
 testCollisions_SRCS += test_collisions.cpp
 testCollisions_SRCS += scene.cpp
