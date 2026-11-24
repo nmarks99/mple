@@ -25,8 +25,43 @@ MAIN(testTrajectory) {
 
     // Check that the last point reaches our target position
     for (const auto& p : traj.back().position) {
-        testOk1(p == 1.0);
+        testOk1(std::abs(p - 1.0) < 1e-9);
     }
+
+    // Collinear, unevenly spaced waypoints. With chord-length s the spline is the straight line, so
+    // the duration is that of one trapezoid on joint 0: D / v + v / a = 1.1.
+    std::vector<std::vector<double>> uneven = {
+        {0.0, 0.0},
+        {0.1, 0.05},
+        {1.0, 0.5},
+    };
+    Trajectory uneven_traj = build_trajectory(uneven, 1.0, 10.0);
+    testOk(std::abs(uneven_traj.back().time - 1.1) < 0.05, "uneven collinear duration %g ~ 1.1",
+           uneven_traj.back().time);
+    bool on_line = true;
+    for (const auto& pt : uneven_traj) {
+        on_line = on_line && std::abs(pt.position[1] - 0.5 * pt.position[0]) < 1e-9;
+    }
+    testOk(on_line, "uneven collinear path stays on the line");
+
+    // Repeated waypoints are dropped
+    std::vector<std::vector<double>> repeated = {
+        {0.0, 0.0},
+        {0.0, 0.0},
+        {1.0, 1.0},
+        {1.0, 1.0},
+    };
+    Trajectory repeated_traj = build_trajectory(repeated, 1.0, 10.0);
+    testOk1(std::abs(repeated_traj.back().position[0] - 1.0) < 1e-9 &&
+            std::abs(repeated_traj.back().position[1] - 1.0) < 1e-9);
+
+    bool threw = false;
+    try {
+        build_trajectory({{0.5, 0.5}, {0.5, 0.5}}, 1.0, 10.0);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    testOk(threw, "identical waypoints are rejected");
 
     // Step trajectory: one point per segment
     // Segment 1: trapezoid (D=2 >= v^2/a=0.1), joint 1 moves half as far

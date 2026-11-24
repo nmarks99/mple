@@ -28,15 +28,31 @@ Trajectory build_trajectory(const std::vector<std::vector<double>>& states,
 
     const size_t state_size = states[0].size();
 
-    // Store waypoints from user in toppra::Vectors
+    // Store waypoints in toppra::Vectors with path parameter s as the cumulative joint-space
+    // distance. Waypoints that coincide with the previous one are dropped so s strictly increases.
+    constexpr double MIN_SEGMENT_LENGTH = 1e-9;
     toppra::Vectors waypoints;
-    for (auto& wp : states) {
-        waypoints.push_back(Eigen::Map<const toppra::Vector>(wp.data(), wp.size()));
+    std::vector<double> s_values;
+    for (const auto& wp : states) {
+        if (wp.size() != state_size) {
+            throw std::invalid_argument("All waypoints must have the same size");
+        }
+        const toppra::Vector q = Eigen::Map<const toppra::Vector>(wp.data(), wp.size());
+        if (waypoints.empty()) {
+            s_values.push_back(0.0);
+        } else {
+            const double length = (q - waypoints.back()).norm();
+            if (length <= MIN_SEGMENT_LENGTH) {
+                continue;
+            }
+            s_values.push_back(s_values.back() + length);
+        }
+        waypoints.push_back(q);
     }
-
-    // Assign parameter values s to the geometric waypoints
-    // TODO: This would be better: s[i] = s[i - 1] + norm(q[i] - q[i - 1])
-    toppra::Vector s_vec = toppra::Vector::LinSpaced(waypoints.size(), 0.0, waypoints.size() - 1);
+    if (waypoints.size() < 2) {
+        throw std::invalid_argument("At least two distinct waypoints are required");
+    }
+    const toppra::Vector s_vec = Eigen::Map<const toppra::Vector>(s_values.data(), s_values.size());
 
     // Create the cubic spline describing joint positions along the geometric path
     toppra::BoundaryCond natural{2, toppra::Vector::Zero(state_size)};

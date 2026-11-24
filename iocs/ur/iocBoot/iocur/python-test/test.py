@@ -38,7 +38,7 @@ if len(sys.argv) == 2:
 
 
     if (result.valid):
-        mple.execute(result.trajectory, speed=5.0, acceleration=10.0)
+        mple.execute(result.trajectory, speed=0.1, acceleration=1.0)
     else:
         print("Failed to find a path")
 
