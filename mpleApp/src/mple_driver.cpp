@@ -208,6 +208,38 @@ std::optional<std::string> MpleDriver::check_state_collision(const SceneSnapshot
     return snapshot.checker->check(state, ws);
 }
 
+std::optional<std::string> MpleDriver::check_path_collision(const SceneSnapshot& snapshot,
+                                                            CollisionChecker::Workspace& ws,
+                                                            const std::vector<std::vector<double>>& waypoints,
+                                                            double resolution) {
+    if (waypoints.empty()) {
+        return std::nullopt;
+    }
+    if (auto hit = check_state_collision(snapshot, ws, waypoints.front())) {
+        return hit;
+    }
+    std::vector<double> state(system_.state_dim);
+    for (size_t k = 1; k < waypoints.size(); ++k) {
+        const auto& a = waypoints[k - 1];
+        const auto& b = waypoints[k];
+        double dist_sq = 0.0;
+        for (size_t i = 0; i < state.size(); ++i) {
+            dist_sq += (b[i] - a[i]) * (b[i] - a[i]);
+        }
+        const auto steps = static_cast<size_t>(std::ceil(std::sqrt(dist_sq) / resolution));
+        for (size_t j = 1; j <= steps; ++j) {
+            const double t = static_cast<double>(j) / static_cast<double>(steps);
+            for (size_t i = 0; i < state.size(); ++i) {
+                state[i] = a[i] + t * (b[i] - a[i]);
+            }
+            if (auto hit = check_state_collision(snapshot, ws, state)) {
+                return hit;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
                                             std::unique_ptr<pvxs::server::ExecOp>&& op,
                                             pvxs::Value&& put_value) {
@@ -285,6 +317,7 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             params.upper_limits = system_.upper_limits;
             params.planning_time = req.planning_time;
             params.algo = req.algo;
+            params.resolution = req.resolution;
             params.is_state_valid = [this, &scene_now, &ws](const std::vector<double>& state) {
                 return !check_state_collision(scene_now, ws, state);
             };
@@ -591,12 +624,7 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
     // which waypoints were given to the Validate method
     std::optional<std::string> hit;
     if (!request->joint_waypoints.empty()) {
-        for (const auto& wp : request->joint_waypoints) {
-            hit = check_state_collision(scene_now, ws, wp);
-            if (hit) {
-                break;
-            }
-        }
+        hit = check_path_collision(scene_now, ws, request->joint_waypoints, request->resolution);
     } else if (!request->cartesian_waypoints.empty()) {
         for (auto& wp : request->cartesian_waypoints) {
             auto joints = adapter_->ik(wp);

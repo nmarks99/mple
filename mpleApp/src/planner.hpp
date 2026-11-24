@@ -18,6 +18,9 @@ struct PlanResult {
     std::vector<double> trajectory_flat;
 };
 
+// Joint-space distance (Euclidean, radians or meters) between collision-checked states
+inline constexpr double DEFAULT_CHECK_RESOLUTION = 0.01;
+
 using StateValidityChecker = std::function<bool(const std::vector<double>&)>;
 
 struct PlanParams {
@@ -28,6 +31,7 @@ struct PlanParams {
     std::vector<double> upper_limits;
     StateValidityChecker is_state_valid;
     double planning_time = 1.0;
+    double resolution = DEFAULT_CHECK_RESOLUTION;
     PlannerAlgorithm algo = PlannerAlgorithm::RRTConnect;
 };
 

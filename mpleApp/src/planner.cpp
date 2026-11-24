@@ -35,6 +35,11 @@ PlanResult plan(const PlanParams& params) {
         return result;
     }
 
+    if (!(params.resolution > 0.0) || !std::isfinite(params.resolution)) {
+        result.description = "Resolution must be finite and greater than 0";
+        return result;
+    }
+
     if (!params.is_state_valid) {
         result.description = "State validity checker must be set";
         return result;
@@ -82,6 +87,10 @@ PlanResult plan(const PlanParams& params) {
     }
     auto space = std::make_shared<ompl::base::RealVectorStateSpace>(state_dimension);
     space->setBounds(bounds);
+    if (params.resolution >= space->getMaximumExtent()) {
+        result.description = "Resolution must be smaller than the state space extent";
+        return result;
+    }
 
     // SimpleSetup convenience class for setting up the planning problem
     ompl::geometric::SimpleSetup setup(space);
@@ -93,7 +102,8 @@ PlanResult plan(const PlanParams& params) {
             const auto* values = state->as<ompl::base::RealVectorStateSpace::StateType>()->values;
             return params.is_state_valid(std::vector<double>(values, values + state_dimension));
         });
-    setup.getSpaceInformation()->setStateValidityCheckingResolution(0.01);
+    setup.getSpaceInformation()->setStateValidityCheckingResolution(params.resolution /
+                                                                    space->getMaximumExtent());
 
     // Tell optimization based planners to optimize for path length
     setup.setOptimizationObjective(

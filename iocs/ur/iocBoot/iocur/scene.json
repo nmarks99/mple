@@ -1,13 +1,13 @@
 {
-    "Ball1" : {
+    "Cube1" : {
         "pose" : {
             "position" : [-0.033, -0.492, 0.488],
             "orientation" : [0, 0, 0]
         },
         "shapes" : [
             {
-                "type" : "sphere",
-                "dimensions": [0.01]
+                "type" : "box",
+                "dimensions": [0.1, 0.1, 0.1]
             }
         ]
     },

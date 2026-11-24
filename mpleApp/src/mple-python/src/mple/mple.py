@@ -69,15 +69,13 @@ class MpleClient:
         }
         self.ctxt.put(f"{self.prefix}SceneObjects", value, timeout=timeout)
 
-    def validate(self, joint_waypoints) -> bool:
-        ValidateMsg = Value(Type([
-            ('joint_waypoints', 'ad'),
-            ('cartesian_waypoints', 'ad'),
-            ('resolution', 'd'),
-        ]), {
-            'joint_waypoints': joint_waypoints,
-            'resolution': 3.1415
-        })
+    def validate(self, joint_waypoints, resolution=None) -> bool:
+        fields = [('joint_waypoints', 'ad'), ('cartesian_waypoints', 'ad')]
+        values = {'joint_waypoints': joint_waypoints}
+        if resolution is not None:
+            fields.append(('resolution', 'd'))
+            values['resolution'] = resolution
+        ValidateMsg = Value(Type(fields), values)
 
         result = self.ctxt.rpc(f"{self.prefix}Validate", ValidateMsg)
         return result
@@ -103,7 +101,7 @@ class MpleClient:
         else:
             print("Validation failed. Aborting.")
 
-    def plan(self, goal, start=[], planner=None, planning_time=None):
+    def plan(self, goal, start=[], planner=None, planning_time=None, resolution=None):
         fields = [('start', 'ad'), ('goal', 'ad')]
         values = {'start': start, 'goal': goal}
         if planner is not None:
@@ -115,6 +113,9 @@ class MpleClient:
             rpc_timeout = planning_time + 1.0
         else:
             rpc_timeout = 5.0
+        if resolution is not None:
+            fields.append(('resolution', 'd'))
+            values['resolution'] = resolution
         PlanMsg = Value(Type(fields), values)
 
         result = self.ctxt.rpc(f"{self.prefix}Plan", PlanMsg, timeout=rpc_timeout)

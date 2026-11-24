@@ -104,6 +104,15 @@ class MpleDriver {
                 }
             }
 
+            if (auto field = value["resolution"]; field.valid()) {
+                resolution = field.as<double>();
+                if (!(resolution > 0.0) || !std::isfinite(resolution)) {
+                    printf("resolution must be finite and greater than 0\n");
+                    request_valid_ = false;
+                    return;
+                }
+            }
+
         }
 
         static std::optional<ValidateRequest> build(pvxs::Value& value, size_t state_dims) {
@@ -124,6 +133,7 @@ class MpleDriver {
         std::vector<std::vector<double>> joint_waypoints = {};
         pvxs::shared_array<const double> cartesian_waypoints_flat = {};
         std::vector<std::vector<double>> cartesian_waypoints = {};
+        double resolution = DEFAULT_CHECK_RESOLUTION;
 
       private:
         bool request_valid_ = true;
@@ -245,12 +255,16 @@ class MpleDriver {
             if (auto field = value["planning_time"]; field.valid()) {
                 planning_time = field.as<double>();
             }
+            if (auto field = value["resolution"]; field.valid()) {
+                resolution = field.as<double>();
+            }
         }
 
         pvxs::shared_array<const double> start = {};
         pvxs::shared_array<const double> goal = {};
         PlannerAlgorithm algo = PlannerAlgorithm::RRTConnect;
         double planning_time = 1.0;
+        double resolution = DEFAULT_CHECK_RESOLUTION;
 
         static std::optional<PlanRequest> build(pvxs::Value& value, size_t state_dims) {
             try {
@@ -426,6 +440,13 @@ class MpleDriver {
     std::optional<std::string> check_state_collision(const SceneSnapshot& snapshot,
                                                      CollisionChecker::Workspace& ws,
                                                      const std::vector<double>& state);
+
+    // Checks the waypoints and the straight joint-space segments between them, with states spaced
+    // at most resolution apart
+    std::optional<std::string> check_path_collision(const SceneSnapshot& snapshot,
+                                                    CollisionChecker::Workspace& ws,
+                                                    const std::vector<std::vector<double>>& waypoints,
+                                                    double resolution);
 
     void scene_objects_put_callback(pvxs::server::SharedPV& pv, std::unique_ptr<pvxs::server::ExecOp>&& op,
                                     pvxs::Value&& put_value);
