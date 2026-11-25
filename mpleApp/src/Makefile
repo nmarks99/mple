@@ -38,6 +38,7 @@ mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
 mple_SRCS += driver.cpp
+mple_SRCS += rpc.cpp
 mple_SRCS += trajectory.cpp
 mple_SRCS += kinematics.cpp
 mple_SRCS += collisions.cpp

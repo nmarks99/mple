@@ -1,12 +1,12 @@
 #include <thread>
 #include <chrono>
 #include <cmath>
-#include <charconv>
 #include <optional>
 #include <map>
 #include <mutex>
 #include "driver.hpp"
 #include "planner.hpp"
+#include "rpc.hpp"
 #include "mple/trajectory.hpp"
 #include "kinematics.hpp"
 
@@ -16,51 +16,6 @@
 #include "epicsExport.h"
 
 namespace mple {
-
-namespace {
-
-// TODO: Remove: this was just for debugging
-template <typename T>
-std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
-
-    static_assert(std::is_arithmetic_v<T>);
-
-    if (vec.empty()) {
-        return "()";
-    }
-
-    // Guess how much space we'll need and reserve it
-    std::string out("(");
-    const size_t GUESS_NUMBER_OF_CHARS = (vec.size() * 8) + 2;
-    out.reserve(GUESS_NUMBER_OF_CHARS);
-
-    const size_t buf_size = 64;
-    char buf[buf_size];
-
-    // Process first to deal with trailing delimiter
-    auto it = vec.begin();
-    auto result = std::to_chars(buf, buf + buf_size, *it);
-    if (result.ec != std::errc()) {
-        return std::nullopt;
-    }
-    out.append(buf, result.ptr);
-    ++it;
-
-    // append a comma then the next converted number each time
-    for (; it != vec.end(); ++it) {
-        out.push_back(',');
-        result = std::to_chars(buf, buf + buf_size, *it);
-        if (result.ec != std::errc()) {
-            return std::nullopt;
-        }
-        out.append(buf, result.ptr);
-    }
-    out.push_back(')');
-
-    return out;
-}
-
-} // namespace
 
 Driver::Driver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file) {
 
@@ -297,13 +252,18 @@ void Driver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     PlanResponse response;
-    auto request = PlanRequest::build(request_value, system_.state_dim);
+    std::optional<PlanRequest> request;
+    try {
+        request = build_plan_request(request_value, system_.state_dim);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     if (!request) {
         printf("Failed to build PlanRequest\n");
         response.valid = false;
         response.description = "Invalid request";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
@@ -325,7 +285,7 @@ void Driver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             params.lower_limits = system_.lower_limits;
             params.upper_limits = system_.upper_limits;
             params.planning_time = req.planning_time;
-            params.algo = req.algo;
+            params.algo = req.planner;
             params.resolution = req.resolution;
             params.is_state_valid = [this, &scene_now, &ws_mutex, &workspaces](const std::vector<double>& state) {
                 CollisionChecker::Workspace* ws;
@@ -344,13 +304,13 @@ void Driver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             PlanResult result = plan(params);
             response.valid = result.valid;
             response.description = std::move(result.description);
-            response.trajectory_flat =
-                pvxs::shared_array<double>(result.trajectory_flat.begin(), result.trajectory_flat.end());
+            response.trajectory =
+                pvxs::shared_array<double>(result.trajectory_flat.begin(), result.trajectory_flat.end()).freeze();
         } catch (const std::exception& e) {
             response.valid = false;
             response.description = std::string("Planning failed: ") + e.what();
         }
-        op->reply(response.to_value());
+        op->reply(to_value(response));
     };
 
     try {
@@ -358,24 +318,29 @@ void Driver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     } catch (const std::exception& e) {
         response.valid = false;
         response.description = std::string("Failed to start planning thread: ") + e.what();
-        shared_op->reply(response.to_value());
+        shared_op->reply(to_value(response));
     }
 }
 
 void Driver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
-    auto request = FKRequest::build(request_value, system_.state_dim);
+    std::optional<FKRequest> request;
+    try {
+        request = build_fk_request(request_value, system_.state_dim);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     if (!request) {
         printf("Failed to build FKRequest\n");
         response.valid = false;
         response.description = "Invalid request";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
-    response.poses_flat.resize(request->joints.size() * 6);
+    pvxs::shared_array<double> poses(request->joints.size() * 6);
     size_t ind = 0;
     for (auto& wp : request->joints) {
         auto pose = adapter_->fk(wp);
@@ -384,7 +349,7 @@ void Driver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                 response.valid = false;
                 response.description = "MPLE FK requires " + std::to_string(system_.state_dim)
                     + " joint values, but received " + std::to_string(wp.size());
-                op->reply(response.to_value());
+                op->reply(to_value(response));
                 return;
             }
             pose = forward_kinematics(system_, wp);
@@ -393,34 +358,40 @@ void Driver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         if (pose->size() != 6) {
             response.valid = false;
             response.description = "Forward kinematics must return six pose values";
-            op->reply(response.to_value());
+            op->reply(to_value(response));
             return;
         }
 
         for (const double value : *pose) {
-            response.poses_flat[ind] = value;
+            poses[ind] = value;
             ++ind;
         }
     }
 
     response.valid = true;
     response.description = "Okay";
-    op->reply(response.to_value());
+    response.poses = poses.freeze();
+    op->reply(to_value(response));
 }
 
 void Driver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     IKResponse response;
-    auto request = IKRequest::build(request_value);
+    std::optional<IKRequest> request;
+    try {
+        request = build_ik_request(request_value);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     if (!request) {
         response.valid = false;
         response.description = "Invalid request";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
-    response.joint_angles_flat.resize(request->cartesian_waypoints.size() * system_.model.nv);
+    pvxs::shared_array<double> joint_angles(request->cartesian_waypoints.size() * system_.state_dim);
     size_t ind = 0;
     for (auto& wp : request->cartesian_waypoints) {
         auto joints = adapter_->ik(wp);
@@ -428,36 +399,41 @@ void Driver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             response.valid = false;
             response.description = "Adapter ik returned " + std::to_string(joints->size()) +
                                    " joints, expected " + std::to_string(system_.state_dim);
-            op->reply(response.to_value());
+            op->reply(to_value(response));
             return;
         }
         if (!joints) {
             response.valid = false;
-            auto wp_string = vector_to_string(wp);
-            response.description = "Inverse kinematics failed for waypoint " + vector_to_string(wp).value_or("(?)");
-            op->reply(response.to_value());
+            response.description = "Inverse kinematics failed";
+            op->reply(to_value(response));
             return;
         }
         for (const auto& j : *joints) {
-            response.joint_angles_flat[ind] = j;
+            joint_angles[ind] = j;
             ind += 1;
         }
     }
 
     response.valid = true;
     response.description = "Okay";
-    op->reply(response.to_value());
+    response.joint_angles = joint_angles.freeze();
+    op->reply(to_value(response));
 }
 
 void Driver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     ExecuteResponse response;
-    auto request = ExecuteRequest::build(request_value, system_.state_dim);
+    std::optional<ExecuteRequest> request;
+    try {
+        request = build_execute_request(request_value, system_.state_dim);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     if (!request) {
         response.error_code = -1;
         response.description = "Invalid request";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
@@ -465,7 +441,7 @@ void Driver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     if (!execution_state_.compare_exchange_strong(expected, ExecutionState::Running)) {
         response.error_code = -1;
         response.description = "Execution already running";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
@@ -498,14 +474,14 @@ void Driver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         execution_state_.store(ExecutionState::Idle);
         response.error_code = -1;
         response.description = std::string("Failed to start execution thread: ") + e.what();
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
     exec_thread.detach();
 
     response.error_code = 0;
     response.description = "Execution started";
-    op->reply(response.to_value());
+    op->reply(to_value(response));
 }
 
 void Driver::execute_trajectory(const ExecuteRequest& req) {
@@ -626,12 +602,17 @@ void Driver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     ValidateResponse response;
-    auto request = ValidateRequest::build(request_value, system_.state_dim);
+    std::optional<ValidateRequest> request;
+    try {
+        request = build_validate_request(request_value, system_.state_dim);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     if (!request) {
         response.valid = false;
         response.description = "Invalid request";
-        op->reply(response.to_value());
+        op->reply(to_value(response));
         return;
     }
 
@@ -672,7 +653,7 @@ void Driver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         response.description = "No collisions detected";
     }
 
-    op->reply(response.to_value());
+    op->reply(to_value(response));
 }
 
 } // namespace mple
