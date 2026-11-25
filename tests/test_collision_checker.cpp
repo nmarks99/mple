@@ -10,7 +10,7 @@
 #include <testMain.h>
 
 #include "collisions.hpp"
-#include "mple_system_model.hpp"
+#include "system_model.hpp"
 #include "scene.hpp"
 
 using namespace mple;

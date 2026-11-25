@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "mple_system_model.hpp"
+#include "system_model.hpp"
 #include "scene.hpp"
 
 namespace mple {

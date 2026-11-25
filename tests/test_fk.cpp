@@ -1,6 +1,6 @@
 #include <array>
 #include <cmath>
-#include "mple_system_model.hpp"
+#include "system_model.hpp"
 #include "kinematics.hpp"
 
 #include <epicsUnitTest.h>

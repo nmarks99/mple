@@ -1,4 +1,4 @@
-#include "trajectory.hpp"
+#include "mple/trajectory.hpp"
 
 #include <algorithm>
 #include <cmath>

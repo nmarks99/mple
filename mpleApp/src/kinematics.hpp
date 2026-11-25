@@ -1,5 +1,5 @@
 #pragma once
-#include "mple_system_model.hpp"
+#include "system_model.hpp"
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
 #include <pinocchio/math.hpp>

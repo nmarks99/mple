@@ -5,9 +5,9 @@
 #include <optional>
 #include <map>
 #include <mutex>
-#include "mple_driver.hpp"
+#include "driver.hpp"
 #include "planner.hpp"
-#include "trajectory.hpp"
+#include "mple/trajectory.hpp"
 #include "kinematics.hpp"
 
 #include <pinocchio/parsers/srdf.hpp>

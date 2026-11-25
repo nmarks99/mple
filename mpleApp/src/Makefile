@@ -16,11 +16,9 @@ DBD += mpleSupport.dbd
 mpleSupport_DBD += mple.dbd
 
 # headers to install
-INC += mple_adapter.hpp
-INC += mple_system_model.hpp
-INC += trajectory.hpp
-INC += kinematics.hpp
-INC += mple_adapter_registry.hpp
+INC += mple/adapter.hpp
+INC += mple/adapter_registry.hpp
+INC += mple/trajectory.hpp
 
 USR_INCLUDES += $(MPLE_SUPPORT_INCLUDES)
 
@@ -39,14 +37,14 @@ mple_LIBS += coal
 mple_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 # source files to be compiled and added to the library
-mple_SRCS += mple_driver.cpp
+mple_SRCS += driver.cpp
 mple_SRCS += trajectory.cpp
 mple_SRCS += kinematics.cpp
 mple_SRCS += collisions.cpp
 mple_SRCS += planner.cpp
 mple_SRCS += scene.cpp
-mple_SRCS += lua_mple_adapter.cpp
-mple_SRCS += mple_adapter_registry.cpp
+mple_SRCS += lua_adapter.cpp
+mple_SRCS += adapter_registry.cpp
 
 include $(TOP)/configure/RULES
 #----------------------------------------

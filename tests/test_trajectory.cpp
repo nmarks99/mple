@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cmath>
 
-#include <trajectory.hpp>
+#include "mple/trajectory.hpp"
 
 using namespace mple;
 

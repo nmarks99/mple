@@ -1,5 +1,5 @@
 #include <unordered_map>
-#include "mple_adapter_registry.hpp"
+#include "mple/adapter_registry.hpp"
 
 namespace mple {
 

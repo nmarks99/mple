@@ -6,7 +6,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "lua_mple_adapter.hpp"
+#include "lua_adapter.hpp"
 
 namespace mple {
 

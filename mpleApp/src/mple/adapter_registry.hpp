@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "mple_adapter.hpp"
+#include "mple/adapter.hpp"
 
 namespace mple {
 

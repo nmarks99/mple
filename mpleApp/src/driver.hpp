@@ -15,8 +15,8 @@
 #include <pinocchio/multibody.hpp>
 #include <pinocchio/parsers/urdf.hpp>
 
-#include "mple_adapter_registry.hpp"
-#include "mple_system_model.hpp"
+#include "mple/adapter_registry.hpp"
+#include "system_model.hpp"
 #include "collisions.hpp"
 #include "planner.hpp"
 #include "scene.hpp"

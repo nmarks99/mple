@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "trajectory.hpp"
+#include "mple/trajectory.hpp"
 
 namespace mple {
 

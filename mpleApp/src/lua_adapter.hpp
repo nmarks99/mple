@@ -1,7 +1,7 @@
 #pragma once
-#include "mple_adapter.hpp"
-#include "trajectory.hpp"
-#include "mple_adapter_registry.hpp"
+#include "mple/adapter.hpp"
+#include "mple/trajectory.hpp"
+#include "mple/adapter_registry.hpp"
 #include <mutex>
 #include <vector>
 #include <iostream>
