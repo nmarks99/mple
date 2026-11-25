@@ -23,5 +23,18 @@
                 "dimensions": [0.03]
             }
         ]
+    },
+
+    "Table" : {
+        "pose" : {
+            "position" : [0.0, 0.0, -0.03],
+            "orientation" : [0, 0, 0]
+        },
+        "shapes" : [
+            {
+                "type" : "box",
+                "dimensions": [2.0, 3.0, 0.05]
+            }
+        ]
     }
 }
