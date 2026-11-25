@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+namespace mple {
+
 enum class PlannerAlgorithm {
     RRTConnect,
     RRTstar,
@@ -44,3 +46,5 @@ struct PlanParams {
 std::optional<PlannerAlgorithm> planner_from_string(const std::string& name);
 
 PlanResult plan(const PlanParams& params);
+
+} // namespace mple

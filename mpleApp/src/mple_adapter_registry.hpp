@@ -1,9 +1,14 @@
+#pragma once
 #include <string>
 #include "mple_adapter.hpp"
 
-/// \brief Registers a MpleAdapter with the given name
-void register_adapter(MpleAdapter* adapter, const std::string& name);
+namespace mple {
 
-/// \brief Finds a MpleAdapter by name
-/// \return Pointer to a registered MpleAdapter if found, else nullptr
-MpleAdapter* find_adapter(const std::string& name);
+/// \brief Registers an Adapter with the given name
+void register_adapter(Adapter* adapter, const std::string& name);
+
+/// \brief Finds an Adapter by name
+/// \return Pointer to a registered Adapter if found, else nullptr
+Adapter* find_adapter(const std::string& name);
+
+} // namespace mple

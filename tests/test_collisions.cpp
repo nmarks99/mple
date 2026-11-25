@@ -3,6 +3,8 @@
 
 #include "scene.hpp"
 
+using namespace mple;
+
 MAIN(testCollisions) {
     testPlan(2);
 

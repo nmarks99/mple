@@ -13,6 +13,8 @@
 #include <pinocchio/parsers/urdf.hpp>
 #include <pinocchio/geometry.hpp>
 
+namespace mple {
+
 // Frames:
 //   r: URDF root frame. Pinocchio expresses everything in this frame (data.oMf, data.oMi,
 //      geometry placements). Pinocchio's docs call it "world" or "o". It is internal to mple.
@@ -22,7 +24,7 @@
 //
 // Naming: g_ab is the pose of frame b expressed in frame a, so p_a = g_ab * p_b and
 // g_ab * g_bc = g_ac.
-struct MpleSystemModel {
+struct SystemModel {
     pinocchio::Model model;
     pinocchio::GeometryModel geom_model;
     pinocchio::FrameIndex base_frame_id;
@@ -44,7 +46,7 @@ struct MpleSystemModel {
 // as (cos, sin), so its configuration q has size nq > nv. Only 1-DOF joints are supported.
 
 // Sets state_dim and the state-space joint limits. Throws for joints with more than one DOF.
-inline void init_joint_limits(MpleSystemModel& sys) {
+inline void init_joint_limits(SystemModel& sys) {
     const auto& model = sys.model;
     constexpr double inf = std::numeric_limits<double>::infinity();
     sys.state_dim = static_cast<std::size_t>(model.nv);
@@ -79,3 +81,4 @@ inline Eigen::VectorXd state_to_configuration(const pinocchio::Model& model, con
     return q;
 }
 
+} // namespace mple

@@ -13,6 +13,8 @@
 #include <pvxs/server.h>
 #include <pvxs/sharedpv.h>
 
+namespace mple {
+
 // All lengths are in meters and angles in radians
 
 // 3D Cartesian coordinates
@@ -125,3 +127,5 @@ pvxs::Value to_eviz_marker_value(const SceneDescription& scene);
 // Same as above from a scene_objects_pva_type() value.
 // Throws std::invalid_argument on invalid input.
 pvxs::Value to_eviz_marker_value(const pvxs::Value& value);
+
+} // namespace mple

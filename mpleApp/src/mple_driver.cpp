@@ -15,6 +15,10 @@
 #include "iocsh.h"
 #include "epicsExport.h"
 
+namespace mple {
+
+namespace {
+
 // TODO: Remove: this was just for debugging
 template <typename T>
 std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
@@ -56,7 +60,9 @@ std::optional<std::string> vector_to_string(const std::vector<T>& vec) {
     return out;
 }
 
-MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file) {
+} // namespace
+
+Driver::Driver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file) {
 
     // Find the adapter
     adapter_ = find_adapter(adapter_name);
@@ -188,14 +194,14 @@ MpleDriver::MpleDriver(const std::string& adapter_name, const std::string& prefi
     pvxs::ioc::server().addPV(prefix + "ComputeIK", ik_pv_);
 }
 
-MpleDriver::SceneSnapshot MpleDriver::scene_snapshot() {
+Driver::SceneSnapshot Driver::scene_snapshot() {
     std::lock_guard<std::mutex> lock(scene_mutex_);
     return {scene_description_, collision_checker_};
 }
 
-std::optional<std::string> MpleDriver::check_state_collision(const SceneSnapshot& snapshot,
-                                                             CollisionChecker::Workspace& ws,
-                                                             const std::vector<double>& state) {
+std::optional<std::string> Driver::check_state_collision(const SceneSnapshot& snapshot,
+                                                         CollisionChecker::Workspace& ws,
+                                                         const std::vector<double>& state) {
 
     // The EE point check stands in for tool geometry, which the robot model does not include yet
     auto pose = adapter_->fk(state);
@@ -210,10 +216,10 @@ std::optional<std::string> MpleDriver::check_state_collision(const SceneSnapshot
     return snapshot.checker->check(state, ws);
 }
 
-std::optional<std::string> MpleDriver::check_path_collision(const SceneSnapshot& snapshot,
-                                                            CollisionChecker::Workspace& ws,
-                                                            const std::vector<std::vector<double>>& waypoints,
-                                                            double resolution) {
+std::optional<std::string> Driver::check_path_collision(const SceneSnapshot& snapshot,
+                                                        CollisionChecker::Workspace& ws,
+                                                        const std::vector<std::vector<double>>& waypoints,
+                                                        double resolution) {
     if (waypoints.empty()) {
         return std::nullopt;
     }
@@ -242,9 +248,9 @@ std::optional<std::string> MpleDriver::check_path_collision(const SceneSnapshot&
     return std::nullopt;
 }
 
-void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
-                                            std::unique_ptr<pvxs::server::ExecOp>&& op,
-                                            pvxs::Value&& put_value) {
+void Driver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
+                                        std::unique_ptr<pvxs::server::ExecOp>&& op,
+                                        pvxs::Value&& put_value) {
     std::shared_ptr<const SceneDescription> new_scene;
     std::shared_ptr<const CollisionChecker> new_checker;
     uint64_t submitted_revision = 0;
@@ -278,7 +284,7 @@ void MpleDriver::scene_objects_put_callback(pvxs::server::SharedPV& pv,
     eviz_markers_pv_.post(eviz_markers_value_);
 }
 
-void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     auto expected = ExecutionState::Running;
     if (execution_state_.compare_exchange_strong(expected, ExecutionState::StopRequested)) {
@@ -287,7 +293,7 @@ void MpleDriver::stop_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply();
 }
 
-void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     PlanResponse response;
@@ -356,7 +362,7 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     }
 }
 
-void MpleDriver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     FKResponse response;
     auto request = FKRequest::build(request_value, system_.state_dim);
@@ -402,7 +408,7 @@ void MpleDriver::fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     IKResponse response;
     auto request = IKRequest::build(request_value);
@@ -443,7 +449,7 @@ void MpleDriver::ik_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
     op->reply(response.to_value());
 }
 
-void MpleDriver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
     ExecuteResponse response;
     auto request = ExecuteRequest::build(request_value, system_.state_dim);
@@ -502,7 +508,7 @@ void MpleDriver::execute_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op
     op->reply(response.to_value());
 }
 
-void MpleDriver::execute_trajectory(const ExecuteRequest& req) {
+void Driver::execute_trajectory(const ExecuteRequest& req) {
     // Build the time parametrized trajectory with TOPP-RA
     Trajectory traj = build_trajectory(req.waypoints, req.speed, req.acceleration);
 
@@ -534,7 +540,7 @@ void MpleDriver::execute_trajectory(const ExecuteRequest& req) {
     }
 }
 
-void MpleDriver::execute_steps(const ExecuteRequest& req) {
+void Driver::execute_steps(const ExecuteRequest& req) {
     constexpr auto START_TIMEOUT = std::chrono::milliseconds(500);
     constexpr double TARGET_TOLERANCE = 1e-3;
 
@@ -616,7 +622,7 @@ void MpleDriver::execute_steps(const ExecuteRequest& req) {
     }
 }
 
-void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
+void Driver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
                           pvxs::Value&& request_value) {
 
     ValidateResponse response;
@@ -669,10 +675,11 @@ void MpleDriver::validate_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& o
     op->reply(response.to_value());
 }
 
+} // namespace mple
 
 // register function for iocsh
 extern "C" void MpleDriverConfig(const char* adapter_name, const char* prefix, const char* scene_objects_file) {
-    new MpleDriver(adapter_name, prefix, scene_objects_file);
+    new mple::Driver(adapter_name, prefix, scene_objects_file);
 }
 
 static const iocshArg MpleDriverArg0 = {"Adapter name", iocshArgString};

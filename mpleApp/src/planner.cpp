@@ -16,6 +16,8 @@
 #include <ompl/geometric/planners/AnytimePathShortening.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 
+namespace mple {
+
 std::optional<PlannerAlgorithm> planner_from_string(const std::string& name) {
     if (name == "RRTConnect") {
         return PlannerAlgorithm::RRTConnect;
@@ -202,3 +204,5 @@ PlanResult plan(const PlanParams& params) {
     result.description = "Success";
     return result;
 }
+
+} // namespace mple

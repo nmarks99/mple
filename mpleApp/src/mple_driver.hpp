@@ -21,13 +21,15 @@
 #include "planner.hpp"
 #include "scene.hpp"
 
-class MpleDriver {
+namespace mple {
+
+class Driver {
   public:
-    MpleDriver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file);
+    Driver(const std::string& adapter_name, const std::string& prefix, const std::string& scene_objects_file);
 
   private:
-    MpleAdapter* adapter_;
-    MpleSystemModel system_;
+    Adapter* adapter_;
+    SystemModel system_;
 
     // Scene stuff
     std::mutex scene_mutex_;
@@ -467,3 +469,5 @@ class MpleDriver {
 
     void fk_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op, pvxs::Value&& request_value);
 };
+
+} // namespace mple

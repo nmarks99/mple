@@ -7,6 +7,8 @@
 
 #include <planner.hpp>
 
+using namespace mple;
+
 MAIN(testPlanner) {
     testPlan(34);
 

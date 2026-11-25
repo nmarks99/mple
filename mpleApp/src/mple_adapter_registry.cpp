@@ -1,18 +1,22 @@
 #include <unordered_map>
 #include "mple_adapter_registry.hpp"
 
-/// \brief Global map to store MpleAdapter*'s keyed by string name
-static std::unordered_map<std::string, MpleAdapter*> g_adapter_registry;
+namespace mple {
 
-void register_adapter(MpleAdapter* adapter, const std::string& name) {
+/// \brief Global map to store Adapter*'s keyed by string name
+static std::unordered_map<std::string, Adapter*> g_adapter_registry;
+
+void register_adapter(Adapter* adapter, const std::string& name) {
     printf("Registering adapter: %s\n", name.c_str());
     g_adapter_registry[name] = adapter;
 }
 
-MpleAdapter* find_adapter(const std::string& name) {
+Adapter* find_adapter(const std::string& name) {
     auto it = g_adapter_registry.find(name);
     if (it != g_adapter_registry.end()) {
         return it->second;
     }
     return nullptr;
 }
+
+} // namespace mple

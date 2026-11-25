@@ -11,13 +11,15 @@
 #include <pinocchio/multibody.hpp>
 #include <pinocchio/parsers/urdf.hpp>
 
+using namespace mple;
+
 MAIN(testFK) {
     testPlan(10);
 
     std::array<double, 6> test_joints = {-M_PI/2, -M_PI/2, -M_PI/2, -M_PI/2, M_PI/2, 0.0};
 
     constexpr const char* urdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur5e.urdf";
-    MpleSystemModel system;
+    SystemModel system;
 
     pinocchio::urdf::buildModel(urdf_path, system.model);
     system.base_frame_id = system.model.getFrameId("base", pinocchio::BODY);
@@ -40,7 +42,7 @@ MAIN(testFK) {
 
     // UR3e wrist_3 is continuous, so Pinocchio has nq = 7 while the state has 6 values
     constexpr const char* ur3e_path = MPLE_TEST_DESCRIPTION_DIR "/ur3e.urdf";
-    MpleSystemModel ur3e;
+    SystemModel ur3e;
     pinocchio::urdf::buildModel(ur3e_path, ur3e.model);
     ur3e.base_frame_id = ur3e.model.getFrameId("base", pinocchio::BODY);
     ur3e.ee_frame_id = ur3e.model.getFrameId("tool0", pinocchio::BODY);

@@ -13,6 +13,8 @@
 #include "mple_system_model.hpp"
 #include "scene.hpp"
 
+using namespace mple;
+
 namespace {
 
 SceneDescription single_object(const std::string& name, const Position& pos, const ScenePrimitive& primitive) {
@@ -41,7 +43,7 @@ const std::vector<double> q_folded{0.0, -M_PI / 2.0, 3.0, 0.0, 0.0, 0.0};
 void test_ur_self_collision(const std::string& robot) {
     const std::string urdf_path = MPLE_TEST_DESCRIPTION_DIR "/" + robot + ".urdf";
     const std::string srdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur.srdf";
-    MpleSystemModel sys;
+    SystemModel sys;
     try {
         pinocchio::urdf::buildModel(urdf_path, sys.model);
         pinocchio::urdf::buildGeom(sys.model, urdf_path, pinocchio::COLLISION, sys.geom_model,
@@ -91,7 +93,7 @@ MAIN(testCollisionChecker) {
     testPlan(29);
 
     const std::string urdf_path = MPLE_TEST_DESCRIPTION_DIR "/ur5e.urdf";
-    MpleSystemModel sys;
+    SystemModel sys;
     try {
         pinocchio::urdf::buildModel(urdf_path, sys.model);
         pinocchio::urdf::buildGeom(sys.model, urdf_path, pinocchio::COLLISION, sys.geom_model,
@@ -166,7 +168,7 @@ MAIN(testCollisionChecker) {
 
     // Ignoring g_rb places the scene in the URDF root frame, which mirrors it in x and y
     {
-        MpleSystemModel sys_root = sys;
+        SystemModel sys_root = sys;
         sys_root.g_rb.setIdentity();
         const CollisionChecker c(sys_root, single_object("front", {-0.6, 0.0, 0.16}, Sphere{0.1}));
         auto ws = c.make_workspace();
@@ -176,7 +178,7 @@ MAIN(testCollisionChecker) {
     test_ur_self_collision("ur5e");
     test_ur_self_collision("ur3e");
 
-    MpleSystemModel sys_self = sys;
+    SystemModel sys_self = sys;
     try {
         sys_self.geom_model.addAllCollisionPairs();
         pinocchio::srdf::removeCollisionPairs(sys_self.model, sys_self.geom_model,

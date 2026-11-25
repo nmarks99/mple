@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 
+namespace mple {
+
 struct TrajectoryPoint {
     double time;
     std::vector<double> position;
@@ -17,3 +19,5 @@ Trajectory build_trajectory(const std::vector<std::vector<double>>& states, doub
 // velocity/acceleration are unsigned per-joint values for synchronized trapezoidal motion.
 Trajectory build_step_trajectory(const std::vector<std::vector<double>>& states, double max_velocity,
                                  double max_acceleration);
+
+} // namespace mple

@@ -8,6 +8,8 @@
 
 #include "collisions.hpp"
 
+namespace mple {
+
 namespace {
 
 pinocchio::SE3 to_se3(const Pose& pose) {
@@ -35,7 +37,7 @@ std::shared_ptr<coal::CollisionGeometry> to_coal(const ScenePrimitive& primitive
 
 } // namespace
 
-CollisionChecker::CollisionChecker(const MpleSystemModel& sys, const SceneDescription& scene)
+CollisionChecker::CollisionChecker(const SystemModel& sys, const SceneDescription& scene)
     : sys_(sys), geom_model_(sys.geom_model), n_robot_geoms_(sys.geom_model.ngeoms) {
 
     // Scene poses are in the base frame (b), but Pinocchio places geometry in the URDF root
@@ -73,3 +75,5 @@ std::optional<std::string> CollisionChecker::check(const std::vector<double>& q,
     }
     return first + " collides with " + geom_owner_[cp.second - n_robot_geoms_];
 }
+
+} // namespace mple

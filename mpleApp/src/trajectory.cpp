@@ -13,6 +13,8 @@
 #include <toppra/parametrizer/const_accel.hpp>
 #include <toppra/solver/seidel.hpp>
 
+namespace mple {
+
 Trajectory build_trajectory(const std::vector<std::vector<double>>& states,
     double max_velocity, double max_acceleration) {
 
@@ -159,3 +161,5 @@ Trajectory build_step_trajectory(const std::vector<std::vector<double>>& states,
 
     return traj;
 }
+
+} // namespace mple

@@ -8,7 +8,9 @@
 
 #include "lua_mple_adapter.hpp"
 
-LuaMpleAdapter::LuaMpleAdapter(const char* script_path, const char* macros) {
+namespace mple {
+
+LuaAdapter::LuaAdapter(const char* script_path, const char* macros) {
     lua_state_ = luaCreateState();
     if (!lua_state_) {
         throw std::runtime_error("Error creating lua state");
@@ -32,34 +34,34 @@ LuaMpleAdapter::LuaMpleAdapter(const char* script_path, const char* macros) {
     // auto config = call_lua_method<SystemModel>("config");
 }
 
-MpleModelConfig LuaMpleAdapter::config() {
+ModelConfig LuaAdapter::config() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto ret = call_lua_method<MpleModelConfig>("config");
+    auto ret = call_lua_method<ModelConfig>("config");
     if (!ret) {
         throw std::runtime_error("Error calling lua config method");
     }
     return ret.value();
 }
 
-std::vector<double> LuaMpleAdapter::get_state() const {
+std::vector<double> LuaAdapter::get_state() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto value = call_lua_method<std::vector<double>>("get_state");
     return value.value_or(std::vector<double>{0.0});
 }
 
 // // TODO: do we need something like this?
-// std::vector<double> LuaMpleAdapter::get_tcp_pose() const {
+// std::vector<double> LuaAdapter::get_tcp_pose() const {
     // std::lock_guard<std::recursive_mutex> lock(mutex_);
     // return {...};
 // }
 
-void LuaMpleAdapter::stop() const {
+void LuaAdapter::stop() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     call_lua_method<LuaReturnVoid>("stop");
     return;
 }
 
-bool LuaMpleAdapter::moving() const {
+bool LuaAdapter::moving() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<bool>("moving");
     if (!ret) {
@@ -68,9 +70,9 @@ bool LuaMpleAdapter::moving() const {
     return ret.value();
 };
 
-bool LuaMpleAdapter::supports_trajectory() const { return lua_function_exists("move"); }
+bool LuaAdapter::supports_trajectory() const { return lua_function_exists("move"); }
 
-bool LuaMpleAdapter::move_step(const TrajectoryPoint& target) const {
+bool LuaAdapter::move_step(const TrajectoryPoint& target) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<bool>("move_step", target);
     if (!ret) {
@@ -79,7 +81,7 @@ bool LuaMpleAdapter::move_step(const TrajectoryPoint& target) const {
     return ret.value();
 }
 
-bool LuaMpleAdapter::move(const Trajectory& trajectory) const {
+bool LuaAdapter::move(const Trajectory& trajectory) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto ret = call_lua_method<bool>("move", trajectory);
     if (!ret) {
@@ -88,7 +90,7 @@ bool LuaMpleAdapter::move(const Trajectory& trajectory) const {
     return ret.value();
 }
 
-std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>& joint_angles) const {
+std::optional<std::vector<double>> LuaAdapter::fk(const std::vector<double>& joint_angles) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto value = call_lua_method<std::vector<double>>("fk", joint_angles);
@@ -98,23 +100,25 @@ std::optional<std::vector<double>> LuaMpleAdapter::fk(const std::vector<double>&
                 "Returned array from fk must be length 3 (x,y,z) but is only length " + std::to_string(value->size()));
         }
     } else {
-        return MpleAdapter::fk(joint_angles);
+        return Adapter::fk(joint_angles);
     }
     return value;
 }
 
-std::optional<std::vector<double>> LuaMpleAdapter::ik(const std::vector<double>& tcp_pose) const {
+std::optional<std::vector<double>> LuaAdapter::ik(const std::vector<double>& tcp_pose) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto value = call_lua_method<std::vector<double>>("ik", tcp_pose);
     if (!value) {
-        return MpleAdapter::ik(tcp_pose);
+        return Adapter::ik(tcp_pose);
     }
     return value;
 }
 
+} // namespace mple
+
 extern "C" void LuaMpleAdapterConfig(const char* name, const char* script_path, const char* macros) {
-    register_adapter(new LuaMpleAdapter(script_path, macros), name);
+    mple::register_adapter(new mple::LuaAdapter(script_path, macros), name);
 }
 
 static const iocshArg LuaMpleAdapterArg0 = {"name", iocshArgString};

@@ -9,6 +9,8 @@
 
 #include "scene.hpp"
 
+using namespace mple;
+
 namespace {
 
 struct ShapeSpec {

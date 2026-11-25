@@ -10,11 +10,13 @@ extern "C" {
 #include "lua.h"
 }
 
-/// \brief MpleAdapter whose methods are implemented in a user provided lua script
-class LuaMpleAdapter : public MpleAdapter {
+namespace mple {
+
+/// \brief Adapter whose methods are implemented in a user provided lua script
+class LuaAdapter : public Adapter {
   public:
-    LuaMpleAdapter(const char* script_path, const char* macros);
-    MpleModelConfig config() override;
+    LuaAdapter(const char* script_path, const char* macros);
+    ModelConfig config() override;
     std::vector<double> get_state() const override;
     void stop() const override;
     bool moving() const override;
@@ -61,12 +63,12 @@ class LuaMpleAdapter : public MpleAdapter {
         return result;
     }
 
-    MpleModelConfig lua_table_to_mple_model_config(lua_State* L) const {
+    ModelConfig lua_table_to_model_config(lua_State* L) const {
         if (!lua_istable(L, -1)) {
             throw std::runtime_error("Top of stack is not a table");
         }
 
-        MpleModelConfig config;
+        ModelConfig config;
 
         lua_getfield(L, -1, "description_dir");
         if (lua_type(L, -1) != LUA_TSTRING) {
@@ -234,7 +236,7 @@ class LuaMpleAdapter : public MpleAdapter {
         }
 
         // TODO: support simple (lua only/non-URDF) configuration
-        else if constexpr (std::is_same_v<T, MpleModelConfig>) {
+        else if constexpr (std::is_same_v<T, ModelConfig>) {
             static_assert(num_args == 0);
 
             const int status = lua_pcall(lua_state_, 0, 1, 0);
@@ -252,10 +254,12 @@ class LuaMpleAdapter : public MpleAdapter {
                 return std::nullopt;
             }
 
-            value = lua_table_to_mple_model_config(lua_state_);
+            value = lua_table_to_model_config(lua_state_);
         }
 
         lua_pop(lua_state_, 1);
         return value;
     }
 };
+
+} // namespace mple

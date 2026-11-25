@@ -6,9 +6,11 @@
 #include "mple_system_model.hpp"
 #include "scene.hpp"
 
+namespace mple {
+
 class CollisionChecker {
   public:
-    CollisionChecker(const MpleSystemModel& sys, const SceneDescription& scene);
+    CollisionChecker(const SystemModel& sys, const SceneDescription& scene);
 
     // Scratch space for check(). Create one per request/thread and reuse it across calls.
     struct Workspace {
@@ -25,8 +27,10 @@ class CollisionChecker {
     const pinocchio::GeometryModel& geometry_model() const { return geom_model_; }
 
   private:
-    const MpleSystemModel& sys_;
+    const SystemModel& sys_;
     pinocchio::GeometryModel geom_model_;
     std::size_t n_robot_geoms_;
     std::vector<std::string> geom_owner_;
 };
+
+} // namespace mple

@@ -7,6 +7,8 @@
 
 #include <trajectory.hpp>
 
+using namespace mple;
+
 MAIN(testTrajectory) {
     testPlan(0);
 

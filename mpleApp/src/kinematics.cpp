@@ -1,8 +1,10 @@
 #include "kinematics.hpp"
 
+namespace mple {
+
 // FIX: Generalize to any system
 // Not all systems will have a pose in SE3
-std::vector<double> forward_kinematics(const MpleSystemModel& sys, const std::vector<double>& state) {
+std::vector<double> forward_kinematics(const SystemModel& sys, const std::vector<double>& state) {
     const Eigen::VectorXd q = state_to_configuration(sys.model, state);
     pinocchio::Data data(sys.model);
     pinocchio::framesForwardKinematics(sys.model, data, q);
@@ -20,3 +22,5 @@ std::vector<double> forward_kinematics(const MpleSystemModel& sys, const std::ve
     };
     return pose;
 }
+
+} // namespace mple

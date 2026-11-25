@@ -5,9 +5,11 @@
 
 #include "trajectory.hpp"
 
+namespace mple {
+
 /// \brief Stores configuration information needed to build
 /// the MPLE system model.
-struct MpleModelConfig {
+struct ModelConfig {
     std::string description_dir;
     std::string urdf_path;
     std::string srdf_path; // optional, empty disables self-collision checking
@@ -16,12 +18,12 @@ struct MpleModelConfig {
 };
 
 /// \brief Abstract base class for implementing a system specific adapter for MPLE
-class MpleAdapter {
+class Adapter {
   public:
-    virtual ~MpleAdapter() = default;
+    virtual ~Adapter() = default;
 
     /// \brief Gets all the needed information about the system
-    virtual MpleModelConfig config() = 0;
+    virtual ModelConfig config() = 0;
 
     /// \brief Gets the current system state (e.g. joint positions, etc.)
     virtual std::vector<double> get_state() const = 0;
@@ -48,7 +50,7 @@ class MpleAdapter {
     ///
     /// Computes the forward kinematics from the given state vector.
     /// If this method is not overriden but the derived class,
-    /// higher layers (MpleDriver) must provide FK
+    /// higher layers (Driver) must provide FK
     virtual std::optional<std::vector<double>> fk(const std::vector<double>& state) const {
         return std::nullopt;
     };
@@ -57,8 +59,10 @@ class MpleAdapter {
     ///
     /// Computes the inverse kinematics from the given pose.
     /// If this method is not overriden but the derived class,
-    /// higher layers (MpleDriver) must provide IK
+    /// higher layers (Driver) must provide IK
     virtual std::optional<std::vector<double>> ik(const std::vector<double>& pose) const {
         return std::nullopt;
     };
 };
+
+} // namespace mple

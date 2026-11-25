@@ -5,6 +5,8 @@
 
 #include "scene.hpp"
 
+using namespace mple;
+
 MAIN(testJson) {
     testPlan(5);
 

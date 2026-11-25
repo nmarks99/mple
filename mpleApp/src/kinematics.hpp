@@ -6,7 +6,11 @@
 #include <pinocchio/multibody.hpp>
 #include <pinocchio/parsers/urdf.hpp>
 
-std::vector<double> forward_kinematics(const MpleSystemModel& sys, const std::vector<double>& state);
+namespace mple {
+
+std::vector<double> forward_kinematics(const SystemModel& sys, const std::vector<double>& state);
 
 // TODO:
-// std::vector<double> inverse_kinematics(MpleSystemModel& sys, const std::vector<double>& pose);
+// std::vector<double> inverse_kinematics(SystemModel& sys, const std::vector<double>& pose);
+
+} // namespace mple

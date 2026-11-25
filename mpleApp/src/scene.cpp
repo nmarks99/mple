@@ -10,6 +10,8 @@
 #include <nlohmann/json.hpp>
 #include "scene.hpp"
 
+namespace mple {
+
 SceneObject SceneObject::from_quicktype(const std::string& name, const quicktype::SceneObjectValue& q_obj) {
 
     std::vector<SceneShape> shapes;
@@ -443,3 +445,5 @@ std::optional<std::string> SceneDescription::ee_check_point(const Position& poin
     }
     return std::nullopt;
 }
+
+} // namespace mple
