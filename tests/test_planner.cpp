@@ -8,7 +8,7 @@
 #include <planner.hpp>
 
 MAIN(testPlanner) {
-    testPlan(29);
+    testPlan(34);
 
     const std::vector<double> lower = {-3.0, -1.0};
     const std::vector<double> upper = {3.0, 1.0};
@@ -48,7 +48,8 @@ MAIN(testPlanner) {
     testOk1(detour.valid);
     testOk1(in_limits(detour));
 
-    for (const char* name : {"RRTstar", "BITstar", "ABITstar"}) {
+    for (const char* name : {"RRTstar", "BITstar", "ABITstar", "EITstar", "AITstar", "BLITstar", "AORRTC",
+                             "AnytimePathShortening"}) {
         auto params = make_params({-1.0, 0.0}, {1.0, 0.0}, band);
         params.algo = *planner_from_string(name);
         params.planning_time = 0.2;

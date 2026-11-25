@@ -9,7 +9,12 @@ enum class PlannerAlgorithm {
     RRTConnect,
     RRTstar,
     BITstar,
-    ABITstar
+    ABITstar,
+    EITstar,
+    AITstar,
+    BLITstar,
+    AORRTC,
+    AnytimePathShortening
 };
 
 struct PlanResult {
@@ -21,6 +26,7 @@ struct PlanResult {
 // Joint-space distance (Euclidean, radians or meters) between collision-checked states
 inline constexpr double DEFAULT_CHECK_RESOLUTION = 0.01;
 
+// AnytimePathShortening calls this from several threads at once
 using StateValidityChecker = std::function<bool(const std::vector<double>&)>;
 
 struct PlanParams {

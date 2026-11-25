@@ -9,6 +9,11 @@
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/informedtrees/BITstar.h>
 #include <ompl/geometric/planners/informedtrees/ABITstar.h>
+#include <ompl/geometric/planners/informedtrees/EITstar.h>
+#include <ompl/geometric/planners/informedtrees/AITstar.h>
+#include <ompl/geometric/planners/lazyinformedtrees/BLITstar.h>
+#include <ompl/geometric/planners/rrt/AORRTC.h>
+#include <ompl/geometric/planners/AnytimePathShortening.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 
 std::optional<PlannerAlgorithm> planner_from_string(const std::string& name) {
@@ -23,6 +28,21 @@ std::optional<PlannerAlgorithm> planner_from_string(const std::string& name) {
     }
     if (name == "ABITstar") {
         return PlannerAlgorithm::ABITstar;
+    }
+    if (name == "EITstar") {
+        return PlannerAlgorithm::EITstar;
+    }
+    if (name == "AITstar") {
+        return PlannerAlgorithm::AITstar;
+    }
+    if (name == "BLITstar") {
+        return PlannerAlgorithm::BLITstar;
+    }
+    if (name == "AORRTC") {
+        return PlannerAlgorithm::AORRTC;
+    }
+    if (name == "AnytimePathShortening") {
+        return PlannerAlgorithm::AnytimePathShortening;
     }
     return std::nullopt;
 }
@@ -123,6 +143,22 @@ PlanResult plan(const PlanParams& params) {
             break;
         case PlannerAlgorithm::ABITstar:
             setup.setPlanner(std::make_shared<ompl::geometric::ABITstar>(setup.getSpaceInformation(), "kABITstar"));
+            break;
+        case PlannerAlgorithm::EITstar:
+            setup.setPlanner(std::make_shared<ompl::geometric::EITstar>(setup.getSpaceInformation()));
+            break;
+        case PlannerAlgorithm::AITstar:
+            setup.setPlanner(std::make_shared<ompl::geometric::AITstar>(setup.getSpaceInformation()));
+            break;
+        case PlannerAlgorithm::BLITstar:
+            setup.setPlanner(std::make_shared<ompl::geometric::BLITstar>(setup.getSpaceInformation()));
+            break;
+        case PlannerAlgorithm::AORRTC:
+            setup.setPlanner(std::make_shared<ompl::geometric::AORRTC>(setup.getSpaceInformation()));
+            break;
+        case PlannerAlgorithm::AnytimePathShortening:
+            setup.setPlanner(
+                std::make_shared<ompl::geometric::AnytimePathShortening>(setup.getSpaceInformation()));
             break;
     }
 

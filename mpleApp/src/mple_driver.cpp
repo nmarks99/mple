@@ -3,6 +3,8 @@
 #include <cmath>
 #include <charconv>
 #include <optional>
+#include <map>
+#include <mutex>
 #include "mple_driver.hpp"
 #include "planner.hpp"
 #include "trajectory.hpp"
@@ -304,7 +306,8 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
         PlanResponse response;
         try {
             auto scene_now = scene_snapshot();
-            auto ws = scene_now.checker->make_workspace();
+            std::mutex ws_mutex;
+            std::map<std::thread::id, CollisionChecker::Workspace> workspaces;
 
             PlanParams params;
             params.start.assign(req.start.begin(), req.start.end());
@@ -318,8 +321,18 @@ void MpleDriver::plan_rpc_callback(std::unique_ptr<pvxs::server::ExecOp>&& op,
             params.planning_time = req.planning_time;
             params.algo = req.algo;
             params.resolution = req.resolution;
-            params.is_state_valid = [this, &scene_now, &ws](const std::vector<double>& state) {
-                return !check_state_collision(scene_now, ws, state);
+            params.is_state_valid = [this, &scene_now, &ws_mutex, &workspaces](const std::vector<double>& state) {
+                CollisionChecker::Workspace* ws;
+                {
+                    std::lock_guard<std::mutex> lock(ws_mutex);
+                    auto it = workspaces.find(std::this_thread::get_id());
+                    if (it == workspaces.end()) {
+                        it = workspaces.emplace(std::this_thread::get_id(), scene_now.checker->make_workspace())
+                                 .first;
+                    }
+                    ws = &it->second;
+                }
+                return !check_state_collision(scene_now, *ws, state);
             };
 
             PlanResult result = plan(params);
